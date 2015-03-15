@@ -1,3 +1,3 @@
-nvc beamsim_xz
-nvc beamsim_lambert
-beamsim_tutorial
+nvc cueBeam_xz
+nvc cueBeam_lambert
+cueBeam_tutorial

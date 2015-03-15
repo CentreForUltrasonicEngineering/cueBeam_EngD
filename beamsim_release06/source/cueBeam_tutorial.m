@@ -8,7 +8,7 @@ wavelength=wave_velocity/frequency;
 wavenumber=single(2*pi/wavelength);
 
 % set XYZ of focal point
-alpha_rotation=-pi/12;
+alpha_rotation=0*-pi/12;
 focal_distance=50e-3;
 focal_x=focal_distance*sin(alpha_rotation); focal_y=0; focal_z=focal_distance*cos(alpha_rotation);
 
@@ -56,9 +56,9 @@ xlabel('angle[deg]'); ylabel('angle[deg]');
 % get XZ cross-section image
 % define XZ image parameters
 resolution=single(0.05e-3);
-x0=single(-20e-3); x1=single(20e-3); dx=resolution; nx=uint32(ceil((x1-x0)/dx));
+x0=single(-60e-3); x1=single(60e-3); dx=resolution; nx=uint32(ceil((x1-x0)/dx));
 y0=single(0); y1=single(0); dy=resolution; ny=uint32(ceil((y1-y0)/dy)+1);
-z0=single(10e-3); z1=single(60e-3); dz=resolution; nz=uint32(ceil((z1-z0)/dz));
+z0=single(10e-3); z1=single(120e-3); dz=resolution; nz=uint32(ceil((z1-z0)/dz));
 tic;
 img_xz=squeeze(cueBeam_xz(tx',wavenumber,x0,y0,z0,nx,ny,nz,dx,dy,dz));
 tout=toc; raycount=nx*ny*nz*size(tx,1); rayspeed=raycount/tout; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
