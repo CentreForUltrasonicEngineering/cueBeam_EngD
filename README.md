@@ -1,12 +1,14 @@
+
 # cueBeam: acoustic beam simulation using Huygens's principle.
 
-cueBeam is a Matlab/CUDA code for simulation of acoustic field pressure distribution. It calculates pressure in frequency domain (meaning, assumes that the radiators continuously radiate) using the Huygen's principle.
 
-This ultra-simplified propagation model enables obtaining quick estimates of pressure field shape, beam width, and side lobe amplitude, suitable for use in NDT research. It is admittedly less accurate than other published methods, but the advantage is in it's speed.
+cueBeam is a Matlab/CUDA code for simulation of acoustic field pressure distribution. It calculates pressure in the frequency domain (meaning, assumes that the radiators continuously radiate) using the Huygen's principle.
+
+This ultra-simplified propagation model enables obtaining quick estimates of pressure field shape, beam width, and side lobe amplitude, suitable for use in NDT research. It is admittedly less accurate than other published methods, but the advantage is in its speed.
 
 Radiators are described in terms of spatial XYZ location, amplitude and phase; despite them being point-like, they physically represent perfectly baffled pistons.
 
-Propagation medium is described in terms of wavenumber k. Radiating sources are treated as point like. For each field probing point, value is computed by summing the contributions from each transmitter, shifted by appropriate phase delay and reduced by respective distance between the transmitter and probed point:
+Propagation medium is described in terms of wavenumber k. Radiating sources are treated as point-like. For each field probing point, the pressure value is computed by summing the contributions from each transmitter, shifted by appropriate phase delay and reduced by the particular distance between the transmitter and probed point:
 
 
     for each pixel
@@ -21,35 +23,47 @@ Propagation medium is described in terms of wavenumber k. Radiating sources are 
     	out(pixel)=abs(pressure);  % store absolute value
     end for each pixel
 
-## Preparation
+
+## Python version:
+The work has just started.
+
+
+## MATLAB/CUDA Version (pre-2017):
+
+### Preparation
 
 The following inputs are required:
 
-1. Locations of the centre of radiating elements -x,y,z.
+1. Locations(coordinates) of the centre of radiating elements -x,y,z.
 2. 'steering vector' - a complex number describing amplitude and phase of radiation for each element. The size of the SVect must be n*1
 3. Wavenumber k in the medium (single frequency only)
-4. Description of the location of the field probing points. There are two versions for this: planar and spherical. The planar is called XZ (planar sampling space along XZ plane) and the spherical is called Lambert, for it uses equi-areal azimuthal sampling of hemisphere.
+4. Description of the location of the field probing points. There are two versions for this: planar and spherical. The planar is called XZ (planar sampling space along XZ plane), and the spherical is called Lambert, for it uses the equal-area azimuthal sampling of a hemisphere.
 
  These inputs should be packed into a n*6 matrix
 
     tx=[elemX elemY elemZ zeros() abs(SVect(:)) angle(SVect(:))];
-    
+​    
 
-## Planar sampling version
+### Planar sampling version
 
-For XZ sampling, the sampling points (where pressure is calculated) is always a regular grid described by:  (x0,y0,z0) - location of a corner of the grid; (dx,dy,dz) - distance between points, and (nx,ny,nz) : number of points in each direction.  ny=1 always in this implementation.
+For XZ sampling, the sampling points (where pressure is calculated) is always a regular grid described by: 
+* (x0,y0,z0) - location of a corner of the grid; 
+* (dx,dy,dz) - distance between points, and 
+* (nx,ny,nz) : number of points in each direction.  
+
+ny=1 always in this implementation.
 
 The way to call the calculation function is:
 
 	img_xz = cueBeam_xz(tx',k,x0,y0,z0,nx,ny,nz,dx,dy,dz);
 
-Note that all inputs must be of class single. (default for Matlab is double, so conversion is needed). This is both for speed and compatibility with early CUDA cards. No ill conditioned math is involved so single precision numbers deliver approximately 80dB of precision.
+Note that all inputs must be of a class single. (default for Matlab is double, so conversion is needed). This is both for speed and compatibility with early CUDA cards. No ill-conditioned math is involved, so single precision numbers deliver approximately 80dB of accuracy.
 
 ![space](cueBeam_XZ_space.png)
- 
-> Figure 1. Scene setting for cueBEAM. Green: element locations(actually, points); red cross: "probe points" where field is calculated. Note that this is an old version of the figure and the default probing points are XZ only.(**todo: create updated image showing correct XZ plane!**)
 
-## Hemisphere sampling version
+> Figure 1. Scene setting for cueBEAM. Green: element locations(actually, points); red cross: "probe points" where the field is calculated. Note that this is an old version of the figure and the default probing points are XZ only.(** to do: create updated image showing correct XZ plane!**)
+
+### Hemisphere sampling version
 
 For beamsim Lambert the calling convention is simpler:
 
@@ -63,10 +77,10 @@ R is the radius of the sphere, and density is an approximate linear distance bet
     d=2*sqrt(2)/number_of_points;
     n=ceil(2*sqrt(2)/d); % note, the double scaling is needed to obtain correct rounding.
     img_lambert=zeros(n,n,'single'); 
-     
+
 
 Inverse transformation rules are used to calculate standard parallel   and central longitude on the sphere:   
- 
+
 ![Lambert 1](cueBeam_Lambert_space_1.png)
 ![Lambert 2](cueBeam_Lambert_space_2.png) 
 >Figure 2. Lambert azimuthal equiareal map field probing point distribution.
@@ -74,7 +88,7 @@ Inverse transformation rules are used to calculate standard parallel   and centr
 
 When compared to regular orthogonal grid, the advantage of this approach is that true power of the sidelobes can be easily integrated and compared with the power of the main lobe. This reduces error of estimating the sidelobe level for classic beamforming, and therefore is more representative of the image contrast from the operator's point of view. 
 
-## Example
+### Example
 
 An example on how to define parameters for use with cueBeam are provided in the MATLAB file:
 
