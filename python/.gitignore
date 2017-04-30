@@ -1,0 +1,10 @@
+**/_build/
+.idea/misc.xml
+.idea/modules.xml
+.idea/python.iml
+.idea/vcs.xml
+.idea/workspace.xml
+.ipynb_checkpoints/
+__pycache__/
+_static/
+_templates/
