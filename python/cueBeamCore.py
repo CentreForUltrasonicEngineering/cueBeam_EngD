@@ -44,6 +44,15 @@ class CueBeamSolver:
             self.amplitude = amplitude
             self.phase = phase
 
+        def setXYZ(self, x: float=0.0, y: float=0.0, z: float=0.0):
+            self.x = x
+            self.y = y
+            self.z = z
+
+        def setAmpPhase(self,amplitude: float=1.0, phase: float=0.0):
+            self.amplitude = amplitude
+            self.phase = phase
+
     elements = [TxElement(0.0,  3.0e-3, -15.0e-3, 1.0, 0.0),
                 TxElement(0.0,  2.0e-3, -10.0e-3, 1.0, 0.0),
                 TxElement(0.0,  1.0e-3,  -5.0e-3, 1.0, 0.0),
