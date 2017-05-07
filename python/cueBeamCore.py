@@ -127,6 +127,41 @@ class CueBeamSolver:
         return rays_per_second
 
 
+
+    def beamsim_simpler(self,
+                        k: float=1000.0,
+                        x0: float=0.0,
+                        y0: float = 0.0,
+                        z0: float = 0.0,
+                        nx: int = 1,
+                        ny: int = 240,
+                        nz: int = 160,
+                        dx: float = 1.0,
+                        dy: float = 1.0e-3,
+                        dz: float = 1.0e-3,
+                        elements_vectorized=None):
+        """wrapper for other methods so that this method returns a good result in a single call"""
+        if elements_vectorized is None:
+            elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+
+        self.wavenumber = k
+        self.rxPlane.x0 = x0
+        self.rxPlane.y0 = y0
+        self.rxPlane.z0 = z0
+        self.rxPlane.nx = nx
+        self.rxPlane.ny = ny
+        self.rxPlane.nz = nz
+        self.rxPlane.dx = dx
+        self.rxPlane.dy = dy
+        self.rxPlane.dz = dz
+        # now, the format for elements_vectorized is mapped after matlab's orginal version:
+        # it is 1D, 1x 6n list where n=number of elements,
+        # and the items are float (x,y,z,amplitude, phase, reserved)
+        
+        return [x*x for x in elements_vectorized]
+
+
+
     def beamsim(self):
         """Execute the pressure calculation.
         
