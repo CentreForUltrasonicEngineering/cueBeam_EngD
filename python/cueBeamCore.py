@@ -118,7 +118,6 @@ class CueBeamSolver:
         return rays_per_second
 
 
-
     def beamsim_simpler(self,
                         k: float=1000.0,
                         x0: float=0.0,
@@ -145,11 +144,24 @@ class CueBeamSolver:
         self.rxPlane.dx = dx
         self.rxPlane.dy = dy
         self.rxPlane.dz = dz
-        # now, the format for elements_vectorized is mapped after matlab's orginal version:
+        # now, the format for elements_vectorized is mapped after matlab's original version:
         # it is 1D, 1x 6n list where n=number of elements,
         # and the items are float (x,y,z,amplitude, phase, reserved)
-        
-        return [x*x for x in elements_vectorized]
+        assert(math.modf(len(elements_vectorized))[0] == 0, "there must be n*6 in the vector")
+        element_count = len(elements_vectorized) / 6
+        self.elements.clear()
+        for idx_element in range(element_count):
+            element_pointer = 6*idx_element
+            new_element = CueBeamSolver.TxElement(
+                        x=elements_vectorized[element_pointer + 0],
+                        y=elements_vectorized[element_pointer + 1],
+                        z=elements_vectorized[element_pointer + 2],
+                        amplitude=elements_vectorized[element_pointer + 3],
+                        phase=elements_vectorized[element_pointer + 4]
+                         )
+            self.elements.append(new_element)
+
+        return self.elements
 
 
 
