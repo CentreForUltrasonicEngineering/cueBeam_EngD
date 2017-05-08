@@ -183,7 +183,6 @@ class CueBeamSolver:
         return self.rxPlane.pressurefield
 
 
-
     def beamsim(self):
         """Execute the pressure calculation.
         
