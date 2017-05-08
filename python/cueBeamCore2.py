@@ -271,24 +271,24 @@ def send_and_receive_many(world: CueBeamWorld):
     for idx_worker in range(need_workers):
         yline0 = idx_worker*each_worker_does_ylines # starts at zero
         yline_y = world.rxPlane.y0 + world.rxPlane.dy * yline0
-        async_handle = beamsim_instant.delay(
-            k=world.wavenumber,
-            x0=world.rxPlane.x0,
-            y0=yline_y,
-            z0=world.rxPlane.z0,
-            nx=world.rxPlane.nx,
-            ny=each_worker_does_ylines,
-            nz=world.rxPlane.nz,
-            dx=world.rxPlane.dx,
-            dy=world.rxPlane.dy,
-            dz=world.rxPlane.dz,
-            elements_vectorized=elements_vectorized1)
         handles.append({
-                'yline_y': yline_y,
-                'async_handle': async_handle})
+                        'yline_y': yline_y,
+                        'async_handle': beamsim_instant.delay(
+                                                            k=world.wavenumber,
+                                                            x0=world.rxPlane.x0,
+                                                            y0=yline_y,
+                                                            z0=world.rxPlane.z0,
+                                                            nx=world.rxPlane.nx,
+                                                            ny=each_worker_does_ylines,
+                                                            nz=world.rxPlane.nz,
+                                                            dx=world.rxPlane.dx,
+                                                            dy=world.rxPlane.dy,
+                                                            dz=world.rxPlane.dz,
+                                                            elements_vectorized=elements_vectorized1)
+                        })
     # TODO: FRONTIER HERE ===================
 
-    # TODO: Wait for first worker, and load the result, 
+    # TODO: Wait for first worker, and load the result,
     #while not (async_handle.ready()):
     #    time.sleep(0.02)
 
