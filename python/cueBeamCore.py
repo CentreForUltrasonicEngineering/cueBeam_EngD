@@ -1,5 +1,6 @@
 import math
 import numpy
+import math
 import matplotlib.pyplot as plt
 import time
 import copy
@@ -157,9 +158,11 @@ class CueBeamSolver:
         # it is 1D, 1x 6n list where n=number of elements,
         # and the items are float (x,y,z,amplitude, phase, reserved)
         assert(math.modf(len(elements_vectorized))[0] == 0, "there must be n*6 in the vector")
-        element_count = len(elements_vectorized) / 6
+        # print("len(elements_vectorized) = {}".format(len(elements_vectorized) ))
+        element_count = math.floor(len(elements_vectorized) / int(6))
+        # print("calculated element count: {}".format(element_count))
         self.elements.clear()
-        for idx_element in range(element_count):
+        for idx_element in range(0,element_count):
             element_pointer = 6*idx_element
             new_element = CueBeamSolver.TxElement(
                         x=elements_vectorized[element_pointer + 0],

@@ -26,3 +26,16 @@ fprintf('%0.2f MRays/s\n',raysPerSecond/1e6);
 figure(1);  clf;
 imagesc(abs(field)); axis image; set(gca,'YDir','normal');
 
+%% testing the contained version
+%T:\git\cueBeam\python
+cueBeam=py.importlib.import_module('cueBeamCore');
+py.importlib.reload(cueBeam);
+cs=cueBeam.CueBeamSolver;
+k=1/1e-3;
+dy=1.0e-3;
+dz=1.0e-3;
+elements_vectorized=[1,2,3,4,5,6,7,8,9,10,11,12];
+
+%field=cell2mat(cell(cs.beamsim_simpler(cs,pyargs('k',k,'elements_vectorized',elements_vectorized))))
+q=cs.beamsim_simpler(cs,pyargs('elements_vectorized',elements_vectorized))
+
