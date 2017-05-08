@@ -4,6 +4,7 @@ import math
 import matplotlib.pyplot as plt
 import time
 import copy
+import warnings
 
 """ 
 This is the core of the cueBeam.
@@ -338,6 +339,10 @@ class these_are_orphans:
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 def beamsim(world: CueBeamWorld):
+    if world is None:
+        warnings.warn("creating new world with default settings")
+        world = CueBeamWorld()
+
     ix = 0
     for iz in range(world.rxPlane.nz):
         for iy in range(world.rxPlane.ny):
@@ -423,11 +428,11 @@ def do_plot_abs(the_input):
             raise Exception("You must supply a pressurefield or world:cueBeamCore2.CueBeamWorld")
 
         if (type(the_input) is CueBeamWorld):
-            world = the_input()
+            world = the_input
             pressurefield = world.rxPlane.pressurefield
 
         if (type(the_input) is numpy.ndarray):
-            world = CueBeamWorld()
+            world = CueBeamWorld() # create new, default world
             pressurefield = the_input
 
         if pressurefield is None:
