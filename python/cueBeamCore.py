@@ -99,12 +99,16 @@ class CueBeamSolver:
             self.dz = dz
             if nx != 1:
                 raise AttributeError("nx must be 1: ")
+            self.nx = nx
+
             if (ny > 4096) | (ny < 1):
                 raise AttributeError("ny must have a sensible value between 1 an 4096")
             self.ny = ny
+
             if (nz > 4096) | (nz < 1):
                 raise AttributeError("nz must have a sensible value between 1 and 4096")
             self.nz = nz
+
             self.clear_pressurefield()
 
         def verify_plane_endpoints(self):
@@ -130,8 +134,8 @@ class CueBeamSolver:
 
     def beamsim_simpler(self,
                         k: float=1000.0,
-                        x0: float=0.0,
-                        y0: float = 0.0,
+                        x0: float=0.1e-3,
+                        y0: float = 1e-3,
                         z0: float = 0.0,
                         nx: int = 1,
                         ny: int = 240,
@@ -171,9 +175,12 @@ class CueBeamSolver:
                         amplitude=elements_vectorized[element_pointer + 3],
                         phase=elements_vectorized[element_pointer + 4]
                          )
-            self.elements.append(new_element)
+            self.elements.append(copy.copy(new_element))
+            # print("added element {}, z={}, a={}".format(idx_element,self.elements[-1].z,self.elements[-1].amplitude))
 
-        return self.elements
+        self.rxPlane.clear_pressurefield()
+        self.beamsim(self)
+        return self.rxPlane.pressurefield
 
 
 
@@ -196,8 +203,13 @@ class CueBeamSolver:
         # note: there is only a single plane implemented. This is for compatibility with the old Matlab-Cuda version.
         # Essentially, there should be no problem in extending this to 3D computation as needed.
         local_rx_plane = self.rxPlane
-        local_elements = self.elements
+        local_elements = copy.copy(self.elements)
         local_wavenumber = self.wavenumber
+        
+        # debug code:
+        # print("local elements:{}".format(len(local_elements)))
+        # for element in local_elements:
+        #     print("z:{}, a:{}".format(element.z, element.amplitude))
 
         ix = 0
         for iz in range(local_rx_plane.nz):
