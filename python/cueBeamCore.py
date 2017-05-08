@@ -205,7 +205,7 @@ class CueBeamSolver:
         local_rx_plane = self.rxPlane
         local_elements = copy.copy(self.elements)
         local_wavenumber = self.wavenumber
-        
+
         # debug code:
         # print("local elements:{}".format(len(local_elements)))
         # for element in local_elements:
