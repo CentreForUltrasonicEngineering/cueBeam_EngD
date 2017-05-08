@@ -5,28 +5,29 @@ import matplotlib.pyplot as plt
 import time
 import copy
 
+""" 
+This is the core of the cueBeam.
 
-class CueBeamSolver:
-    """ 
-    This is the core of the cueBeam.
+in the version 2, i refactor the earlier code so that all information is stored in a flattish object instead of multi level objects
+this is to make it easier to split the work into workers
     
-    **Essential fields that You need to set:**
+**Essential fields that You need to set in a CueBeamWorld object:**
+
+1. wavenumber: float
+    The environment property, note that wavenumber = 1/wavelength in that enviroment
+2. rxPlane: single item of class RxPlane()
+    describes the regular sampling plane
     
-    wavenumber: float
-        The enviroment property, note that wavenumber = 1/wavelength in that enviroment
-    elements: list of TxElement
-        description of the transmitters
-    rxPlane: single item of class RxPlane()
-        describes the regular sampling plane
+3. elements: list of TxElement()
+    description of the transmitters
+"""
 
-    """
 
-    wavenumber = 1.0 / 1.0e-3  # wavelength = 1/wavenumber; so wavenumber = 1/wavelength
-    """Property of the environment: the wavenumber."""
+class CueBeamWorld:
+    """Contains all the info needed for cueBeam core code to return a field"""
 
     class TxElement:
         """Describes a single transmitting monopole."""
-
         x = 0.0
         """X-location of the monopole."""
         y = 0.0
@@ -45,32 +46,20 @@ class CueBeamSolver:
             self.amplitude = amplitude
             self.phase = phase
 
-        def setXYZ(self, x: float=0.0, y: float=0.0, z: float=0.0):
+        def set_xyz(self, x: float=0.0, y: float=0.0, z: float=0.0):
             self.x = x
             self.y = y
             self.z = z
 
-        def setAmpPhase(self,amplitude: float=1.0, phase: float=0.0):
+        def set_amp_phase(self,amplitude: float=1.0, phase: float=0.0):
             self.amplitude = amplitude
             self.phase = phase
-
-    elements = [TxElement(0.0,  3.0e-3, -15.0e-3, 1.0, 0.0),
-                TxElement(0.0,  2.0e-3, -10.0e-3, 1.0, 0.0),
-                TxElement(0.0,  1.0e-3,  -5.0e-3, 1.0, 0.0),
-                TxElement(0.0,  0.0e-3,   0.0e-3, 1.0, 0.0),
-                TxElement(0.0, -1.0e-3,   5.0e-3, 1.0, 0.0),
-                TxElement(0.0, -2.0e-3,  10.0e-3, 1.0, 0.0),
-                TxElement(0.0, -3.0e-3,  15.0e-3, 1.0, 0.0)
-                ]
-    """List of monopoles.
-    
-    List of TxElement() - the list of monopoles emitting energy into the medium"""
 
     class RxPlane:
         """describes a rectangular XZ section of the plane - and points of sampling(calculation) of the pressure"""
         x0 = -0.01e-3  # needs to be a little bit off plane to avoid division by zer
         "x-origin of the measurement plane"
-        y0 =  1.0e-3
+        y0 = 1.0e-3
         "y-origin of the measurement plane"
         z0 = +0.0e-3
         "z-origin of the measurement plane"
@@ -89,8 +78,13 @@ class CueBeamSolver:
         pressurefield = numpy.zeros((ny, nz), numpy.complex)
         "the numpy array to store the result of measurement. Note: complex numbers"
 
-        def __init__(self, x0=-0.01e-3, y0=1.0e-3, z0=0.0e-3, dx=0.5e-3, dy=0.5e-3, dz=0.5e-3, nx=1, ny=240, nz=160):
-            "Creates the new instance of RxPlane"
+        execution_time = numpy.NaN
+
+        def __init__(self,
+                     x0=-0.01e-3, y0=1.0e-3, z0=0.0e-3,
+                     dx=0.5e-3, dy=0.5e-3, dz=0.5e-3,
+                     nx=1, ny=240, nz=160):
+            """Creates the new instance of RxPlane"""
             self.x0 = x0
             self.y0 = y0
             self.z0 = z0
@@ -112,25 +106,99 @@ class CueBeamSolver:
             self.clear_pressurefield()
 
         def verify_plane_endpoints(self):
-            "returns x,y,z location of the corner oposite to the origin corner"
+            """"returns x,y,z location of the corner oposite to the origin corner"""
             return [self.x0 + self.nx * self.dx, self.y0 + self.ny * self.dy, self.z0 + self.nz * self.dz]
 
         def clear_pressurefield(self):
-            "empties the result"
+            """"empties the result"""
             self.pressurefield = numpy.zeros((self.ny, self.nz), numpy.complex)
+
+    # from this line, the list of actual items starts
+
+    """List of monopoles. List of TxElement() - the list of monopoles emitting energy into the medium"""
+    elements = [TxElement(0.0,  3.0e-3, -15.0e-3, 1.0, 0.0),
+                TxElement(0.0,  2.0e-3, -10.0e-3, 1.0, 0.0),
+                TxElement(0.0,  1.0e-3,  -5.0e-3, 1.0, 0.0),
+                TxElement(0.0,  0.0e-3,   0.0e-3, 1.0, 0.0),
+                TxElement(0.0, -1.0e-3,   5.0e-3, 1.0, 0.0),
+                TxElement(0.0, -2.0e-3,  10.0e-3, 1.0, 0.0),
+                TxElement(0.0, -3.0e-3,  15.0e-3, 1.0, 0.0)
+                ]
 
     rxPlane = RxPlane()
     "contains the description/location of the measurement points"
 
-    def beamsim_timed(self):
+    """Property of the environment: the wavenumber."""
+    wavenumber = 1.0 / 1.0e-3  # wavelength = 1/wavenumber; so wavenumber = 1/wavelength
+
+    def get_ray_count(self):
+        return self.rxPlane.nx * self.rxPlane.ny * self.rxPlane.nz * len(self.elements)
+
+    def __init__(self):
+        pass
+
+
+class these_are_orphans:
+    # old methods, not used anymore
+    # static methods
+
+    def beamsim_timed(self, params: CueBeamWorld):
+        if params is None:
+            params = CueBeamWorld()
+
         t1 = time.clock()
-        self.beamsim()
+        self.beamsim(params)
         t2 = time.clock()
         dt = t2 - t1
         rays_per_second = self.get_ray_count() / dt
         print("got {:0.2f} M rays per second".format(rays_per_second/1e6))
         return rays_per_second
 
+    def beamsim_instant(self,
+                         k: float = 1000.0,
+                         x0: float = 0.1e-3,
+                         y0: float = 1e-3,
+                         z0: float = 0.0,
+                         nx: int = 1,
+                         ny: int = 240,
+                         nz: int = 160,
+                         dx: float = 1.0,
+                         dy: float = 1.0e-3,
+                         dz: float = 1.0e-3,
+                         elements_vectorized=None):
+        if elements_vectorized is None:
+            elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        local_parameters = CueBeamSolver2.CueBeamWorld()
+        # copy all the parameters from the input to the parameter object
+        local_parameters.wavenumber = k
+        local_parameters.rxPlane.x0 = x0
+        local_parameters.rxPlane.y0 = y0
+        local_parameters.rxPlane.z0 = z0
+        local_parameters.rxPlane.nx = nx
+        local_parameters.rxPlane.ny = ny
+        local_parameters.rxPlane.nz = nz
+        local_parameters.rxPlane.dx = dx
+        local_parameters.rxPlane.dy = dy
+        local_parameters.rxPlane.dz = dz
+        assert (math.modf(len(elements_vectorized))[0] == 0, "there must be n*6 in the vector")
+        element_count = math.floor(len(elements_vectorized) / int(6))
+        local_parameters.elements.clear()
+        for idx_element in range(0, element_count):
+            element_pointer = 6 * idx_element
+            new_element = CueBeamSolver2.CueBeamWorld.TxElement(
+                x=elements_vectorized[element_pointer + 0],
+                y=elements_vectorized[element_pointer + 1],
+                z=elements_vectorized[element_pointer + 2],
+                amplitude=elements_vectorized[element_pointer + 3],
+                phase=elements_vectorized[element_pointer + 4]
+            )
+            local_parameters.elements.append(copy.copy(new_element))
+        local_parameters.rxPlane.clear_pressurefield()
+
+        # call the beamsim as is
+        local_parameters.rxPlane.pressurefield = beamsim_static(local_parameters)
+
+        return local_parameters.rxPlane.pressurefield
 
     def beamsim_simpler(self,
                         k: float=1000.0,
@@ -267,17 +335,111 @@ class CueBeamSolver:
         plt.ylabel("y-axis[m]")
         plt.show()
 
-    def do_plot_abs(self):
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+def beamsim(world: CueBeamWorld):
+    ix = 0
+    for iz in range(world.rxPlane.nz):
+        for iy in range(world.rxPlane.ny):
+            # initialize accumulator
+            pressure_re = 0.0
+            pressure_im = 0.0
+            # calculate the XYZ location of the transmitter
+            pixel_x = world.rxPlane.x0 + ix * world.rxPlane.dx
+            pixel_y = world.rxPlane.y0 + iy * world.rxPlane.dy
+            pixel_z = world.rxPlane.z0 + iz * world.rxPlane.dz
+            # for each element do:
+            for itx in range(len(world.elements)):
+                # calculate distance between the transmitter element and receiver pixel
+                ddx = (pixel_x - world.elements[itx].x)
+                ddy = (pixel_y - world.elements[itx].y)
+                ddz = (pixel_z - world.elements[itx].z)
+                distance = math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)
+                # based on distance and wavenumber, calculate the amplitude and phase
+                k_phase = - world.wavenumber * distance + world.elements[itx].phase
+                k_amplitude = world.elements[itx].amplitude / (2 * 3.14159 * distance)
+                # increment the accumulator
+                pressure_re += math.cos(k_phase) * k_amplitude
+                pressure_im += math.sin(k_phase) * k_amplitude
+            # memory write
+            world.rxPlane.pressurefield[(iy, iz)] = pressure_re + 1.0j * pressure_im
+    return world
+
+
+def beamsim_instant(self,
+                    k: float = 1000.0,
+                    x0: float = 0.1e-3,
+                    y0: float = 1e-3,
+                    z0: float = 0.0,
+                    nx: int = 1,
+                    ny: int = 240,
+                    nz: int = 160,
+                    dx: float = 1.0,
+                    dy: float = 1.0e-3,
+                    dz: float = 1.0e-3,
+                    elements_vectorized=None):
+        if elements_vectorized is None:
+            elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        local_world = CueBeamWorld()
+        # copy all the parameters from the input to the parameter object
+        local_world.wavenumber = k
+        local_world.rxPlane.x0 = x0
+        local_world.rxPlane.y0 = y0
+        local_world.rxPlane.z0 = z0
+        local_world.rxPlane.nx = nx
+        local_world.rxPlane.ny = ny
+        local_world.rxPlane.nz = nz
+        local_world.rxPlane.dx = dx
+        local_world.rxPlane.dy = dy
+        local_world.rxPlane.dz = dz
+        assert (math.modf(len(elements_vectorized))[0] == 0, "there must be n*6 in the vector")
+        element_count = math.floor(len(elements_vectorized) / int(6))
+        local_world.elements.clear()
+        for idx_element in range(0, element_count):
+            element_pointer = 6 * idx_element
+            new_element = CueBeamSolver2.CueBeamWorld.TxElement(
+                x=elements_vectorized[element_pointer + 0],
+                y=elements_vectorized[element_pointer + 1],
+                z=elements_vectorized[element_pointer + 2],
+                amplitude=elements_vectorized[element_pointer + 3],
+                phase=elements_vectorized[element_pointer + 4]
+            )
+            local_world.elements.append(copy.copy(new_element))
+        local_world.rxPlane.clear_pressurefield()
+
+        # call the beamsim as is
+        local_world.rxPlane.pressurefield = beamsim(local_world)
+
+        return local_world.rxPlane.pressurefield
+
+
+def do_plot_abs(the_input):
         """Makes an example plot.
 
          It is configured for the default data. Compatible with Jupyter"""
+        pressurefield = None
+
+        if the_input is None:
+            raise Exception("You must supply a pressurefield or world:cueBeamCore2.CueBeamWorld")
+
+        if (type(the_input) is CueBeamWorld):
+            world = the_input()
+            pressurefield = world.rxPlane.pressurefield
+
+        if (type(the_input) is numpy.ndarray):
+            world = CueBeamWorld()
+            pressurefield = the_input
+
+        if pressurefield is None:
+            raise Exception("Something wrong: pressurefield is still None")
 
         hfig = plt.figure(num=1, figsize=(8, 6), dpi=90, facecolor='white', edgecolor='black')
+
         imgplot = plt.imshow(
-            X=numpy.abs(self.rxPlane.pressurefield),
+            X=numpy.abs(pressurefield),
             extent=(
-                self.rxPlane.z0, self.rxPlane.z0 + self.rxPlane.nz * self.rxPlane.dz,
-                self.rxPlane.y0 + self.rxPlane.ny * self.rxPlane.dy, self.rxPlane.y0
+                world.rxPlane.z0, world.rxPlane.z0 + world.rxPlane.nz * world.rxPlane.dz,
+                world.rxPlane.y0, world.rxPlane.y0 + world.rxPlane.ny * world.rxPlane.dy
             ),
             interpolation="spline36",
             clim=(0, 8.0),
@@ -287,3 +449,8 @@ class CueBeamSolver:
         plt.xlabel("z-axis[m]")
         plt.ylabel("y-axis[m]")
         plt.show()
+
+# to test, do :
+# import cueBeamCore2
+# w = cueBeamCore2.CueBeamWorld()
+# cueBeamCore2.do_plot_abs(cueBeamCore2.beamsim(w).rxPlane.pressurefield)
