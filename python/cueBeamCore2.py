@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import time
 import copy
 import warnings
+import dill
+import redis
+from celery import Celery
+
 
 """ 
 This is the core of the cueBeam.
@@ -22,6 +26,16 @@ this is to make it easier to split the work into workers
 3. elements: list of TxElement()
     description of the transmitters
 """
+
+
+# # # # # CELERY SETTINGS
+# storage for dynamically stored functions
+RSTORE = redis.StrictRedis('192.168.0.43', port=6379, db=1)
+# connection to the celery object, broker and broker's back-end
+CELERY = Celery('tasks', broker='amqp://guest:guest@192.168.0.43:5672/',backend='redis://192.168.0.43:6379/0')
+
+CELERY.conf.accept_content = ['json', 'msgpack']
+CELERY.conf.result_serializer = 'msgpack'
 
 
 class CueBeamWorld:
@@ -84,7 +98,7 @@ class CueBeamWorld:
         def __init__(self,
                      x0=-0.01e-3, y0=1.0e-3, z0=0.0e-3,
                      dx=0.5e-3, dy=0.5e-3, dz=0.5e-3,
-                     nx=1, ny=240, nz=160):
+                     nx=1, ny=1024, nz=512):
             """Creates the new instance of RxPlane"""
             self.x0 = x0
             self.y0 = y0
@@ -117,14 +131,19 @@ class CueBeamWorld:
     # from this line, the list of actual items starts
 
     """List of monopoles. List of TxElement() - the list of monopoles emitting energy into the medium"""
-    elements = [TxElement(0.0,  3.0e-3, -15.0e-3, 1.0, 0.0),
-                TxElement(0.0,  2.0e-3, -10.0e-3, 1.0, 0.0),
-                TxElement(0.0,  1.0e-3,  -5.0e-3, 1.0, 0.0),
-                TxElement(0.0,  0.0e-3,   0.0e-3, 1.0, 0.0),
-                TxElement(0.0, -1.0e-3,   5.0e-3, 1.0, 0.0),
-                TxElement(0.0, -2.0e-3,  10.0e-3, 1.0, 0.0),
-                TxElement(0.0, -3.0e-3,  15.0e-3, 1.0, 0.0)
-                ]
+    elements = [
+        TxElement(0.0,  5.0e-3, -25.0e-3, 1.0, 0.0),
+        TxElement(0.0,  4.0e-3, -20.0e-3, 1.0, 0.0),
+        TxElement(0.0,  3.0e-3, -15.0e-3, 1.0, 0.0),
+        TxElement(0.0,  2.0e-3, -10.0e-3, 1.0, 0.0),
+        TxElement(0.0,  1.0e-3,  -5.0e-3, 1.0, 0.0),
+        TxElement(0.0,  0.0e-3,   0.0e-3, 1.0, 0.0),
+        TxElement(0.0, -1.0e-3,   5.0e-3, 1.0, 0.0),
+        TxElement(0.0, -2.0e-3,  10.0e-3, 1.0, 0.0),
+        TxElement(0.0, -3.0e-3,  15.0e-3, 1.0, 0.0),
+        TxElement(0.0, -4.0e-3,  20.0e-3, 1.0, 0.0),
+        TxElement(0.0, -5.0e-3,  25.0e-3, 1.0, 0.0)
+        ]
 
     rxPlane = RxPlane()
     "contains the description/location of the measurement points"
@@ -338,6 +357,7 @@ class these_are_orphans:
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+@CELERY.task()
 def beamsim(world: CueBeamWorld):
     if world is None:
         warnings.warn("creating new world with default settings")
@@ -371,6 +391,7 @@ def beamsim(world: CueBeamWorld):
     return world
 
 
+@CELERY.task()
 def beamsim_instant(self,
                     k: float = 1000.0,
                     x0: float = 0.1e-3,
