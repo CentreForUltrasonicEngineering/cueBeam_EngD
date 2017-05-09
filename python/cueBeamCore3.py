@@ -178,10 +178,10 @@ blocks_y = int((int(cny) / threads_y) + 1)
 blocks_z = int((int(cnz) / threads_z) + 1)
 
 # start actual call
-benchmark_repeat = 5
+benchmark_repeat = 1
 time_1 = time.clock()
 for idxBench in range(benchmark_repeat):
-    BeamSimKernel(
+    kernel_time = BeamSimKernel(
             drv.In(ctx),
             ctx_length,
             drv.Out(cout),
@@ -189,7 +189,8 @@ for idxBench in range(benchmark_repeat):
             cnx, cny, cnz,
             cdx, cdy, cdz,
             ck,
-            block=(threads_x, threads_y, threads_z), grid=(blocks_x, blocks_y,blocks_z))
+            block=(threads_x, threads_y, threads_z), grid=(blocks_x, blocks_y,blocks_z),
+            time_kernel=True)
 time_2 = time.clock()
 performance = world.get_ray_count() / (time_2-time_1) * benchmark_repeat
 
