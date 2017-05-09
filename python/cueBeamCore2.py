@@ -350,12 +350,13 @@ def do_plot_abs(the_input):
         hfig = plt.figure(num=1, figsize=(8, 6), dpi=90, facecolor='white', edgecolor='black')
 
         imgplot = plt.imshow(
-            X=numpy.abs(pressurefield),
+            X=numpy.real(pressurefield),
             extent=(
                 world.rxPlane.z0, world.rxPlane.z0 + world.rxPlane.nz * world.rxPlane.dz,
                 world.rxPlane.y0, world.rxPlane.y0 + world.rxPlane.ny * world.rxPlane.dy
             ),
-            interpolation="spline36",
+            # interpolation="spline36",
+            interpolation="nearest",
             clim=(0, 8.0),
             origin="lower")
         # end imshow
