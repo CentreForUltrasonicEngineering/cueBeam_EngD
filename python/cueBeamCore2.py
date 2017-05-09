@@ -204,8 +204,7 @@ def beamsim(world: CueBeamWorld):
     t_after = time.clock()
     execution_time = t_after - t_before
     world.last_performance_rays_per_second = world.get_ray_count() / execution_time
-    dill.settings['recurse'] = True
-    return pickle.dumps(world.rxPlane.pressurefield)
+    return world.rxPlane.pressurefield
 
 
 @CELERY.task()
