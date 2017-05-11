@@ -16,7 +16,7 @@ from cueBeamWorld import CueBeamWorld, example_plot
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # storage for dynamically stored functions
-RSTORE = redis.StrictRedis('192.168.0.43', port=6379, db=1)
+RSTORE = redis.StrictRedis('EEE-mimir.ds.strath.ac.uk', port=6379, db=1)
 # connection to the celery object, broker and broker's back-end
 # CELERY = Celery('tasks', broker='amqp://guest:guest@192.168.0.43:5672/',backend='redis://192.168.0.43:6379/0')
 CELERY = Celery('tasks', broker='amqp://guest:guest@EEE-mimir.ds.strath.ac.uk/',backend='redis://EEE-mimir.ds.strath.ac.uk/0')
