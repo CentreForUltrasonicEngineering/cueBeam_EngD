@@ -1,6 +1,6 @@
 clear classes
 %% testing the contained version
-%T:\git\cueBeam\python
+
 cueBeam=py.importlib.import_module('cueBeamCore');
 py.importlib.reload(cueBeam);
 cs=cueBeam.CueBeamSolver;

@@ -1,13 +1,17 @@
+import numpy
+import matplotlib.pyplot as plt
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # CueBeamWorld class
-# # Utility class. Usefull for python-side works and debugging, but do not actually use for production
+# # Utility class. Useful for python-side works and debugging, but do not actually use for production
 # # because it is difficult to modify it correctly from Matlab side.
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 class CueBeamWorld:
     """Contains all the info needed for cueBeam core code to return a pressure field
     it's actually not very compatible with the core cueBeam solver
-    but it's soo incredibly convinient for storing world state , and it's default values are so usefull 
+    but it's soo incredibly convenient for storing world state , and it's default values are so useful 
     that I decided to leave it in for now    
     """
 

@@ -24,23 +24,104 @@ CELERY = Celery('tasks', broker='amqp://guest:guest@EEE-mimir.ds.strath.ac.uk/',
 CELERY.conf.accept_content = ['json', 'msgpack']
 CELERY.conf.result_serializer = 'msgpack'
 
+# for debugging:
+cueBeamCore3Verbosity = False
+
+
+def enable_verbosity():
+    global cueBeamCore3Verbosity
+    cueBeamCore3Verbosity = True
+
+
+def disable_verbosity():
+    global cueBeamCore3Verbosity
+    cueBeamCore3Verbosity = False
+
 
 # ############################################
-# The wrapper for calling the beamsim remotely
+# The wrapper for calling the beamsim remotely and returning the field only
+# this way matlab is completely relieved from dealing with python objects
 # ############################################
-@CELERY.task()
 def beamsim_remote(k: float = 1000.0,
                    x0: float = 0.1e-3,
                    y0: float = 1e-3,
                    z0: float = 0.0,
-                   nx: int = 1,
+                   nx: int = 1.0,
                    ny: int = 240,
                    nz: int = 160,
-                   dx: float = 1.0,
+                   dx: float = 1.0e-3,
                    dy: float = 1.0e-3,
                    dz: float = 1.0e-3,
                    elements_vectorized=None):
+    if cueBeamCore3Verbosity:
+        print("calling remote worker and waiting")
+    async_result = beamsim_through_celery.delay(k, x0, y0, z0, nx, ny, nz, dx, dy, dz, elements_vectorized)
+    while not(async_result.ready()):
+        time.sleep(0.01)  # check up to 100x per second
+    return async_result.result
+
+
+@CELERY.task()
+def beamsim_through_celery(k: float = 1000.0,
+                           x0: float = 0.1e-3,
+                           y0: float = 1e-3,
+                           z0: float = 0.0,
+                           nx: int = 1,
+                           ny: int = 240,
+                           nz: int = 160,
+                           dx: float = 1.0e-3,
+                           dy: float = 1.0e-3,
+                           dz: float = 1.0e-3,
+                           elements_vectorized=None):
+    if cueBeamCore3Verbosity:
+        print('got work, {} beams.'.format(nx*ny*nz*(len(elements_vectorized)/6)))
+
     return beamsim_gpu(k, x0, y0, z0, nx, ny, nz, dx, dy, dz, elements_vectorized)
+
+
+# same as previous, but this time, nx>1 is allowed
+def beamsim_3d(k:  float = 1000.0,
+               x0: float = 0.1e-3,
+               y0: float = 1e-3,
+               z0: float = 0.0,
+               nx: int = 160,
+               ny: int = 240,
+               nz: int = 160,
+               dx: float = 1.0e-3,
+               dy: float = 1.0e-3,
+               dz: float = 1.0e-3,
+               elements_vectorized=None):
+
+    if elements_vectorized is None:
+        elements_vectorized1 = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+    else:
+        elements_vectorized1 = elements_vectorized
+
+    # create the space for the result
+    cout3d = numpy.zeros((int(nx), int(ny), int(nz))).astype(numpy.complex64)
+    async_handles=[]  # placeholder for the async results
+    # send out the work
+    for idxX in range(nx):
+        local_x0 = x0 + idxX * dx
+        async_handles.append(
+            {
+                'handle': beamsim_through_celery.delay(k, local_x0, y0, z0, int(1), ny, nz, dx, dy, dz, elements_vectorized1),
+                'idxX': idxX,
+                'done': False
+            })
+    # read out the results
+    results_to_read = nx
+    while results_to_read>0:
+        for idxX in range(nx):
+            if not(async_handles[idxX]['done']):
+                if async_handles[idxX]['handle'].ready():
+                    cout3d[async_handles[idxX]['idxX'], :, :] = async_handles[idxX]['handle'].result
+                    async_handles[idxX]['done'] = True
+                    results_to_read -= 1
+    return cout3d
+
+
+
 
 
 # ############################################
@@ -176,8 +257,8 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
     ctx_count = numpy.int32(len(ctx) / 6)
     # note: must reserve the output memory right here
     # note: for 2D values, the x must be == 1
-    assert(nx == 0)
-    cout = numpy.zeros((int(cny), int(cnz))).astype(numpy.complex64)
+    assert(nx == 1)
+    cuda_out = numpy.zeros((int(cny), int(cnz))).astype(numpy.complex64)
 
     # prepare the GPU call : thread wave shape:
     threads_x = 1
@@ -188,27 +269,28 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
     blocks_z = int((int(cnz) / threads_z) + 1)
 
     # start the timer!
-    time_1 = time.clock()
+    # time_1 = time.clock()
 
     beamsim_kernel(
         drv.In(ctx),
         ctx_count,
-        drv.Out(cout),
+        drv.Out(cuda_out),
         cx0, cy0, cz0,
         cnx, cny, cnz,
         cdx, cdy, cdz,
         ck,
         block=(threads_x, threads_y, threads_z), grid=(blocks_x, blocks_y, blocks_z))
 
-    time_2 = time.clock()
+    # time_2 = time.clock()
 
     # release the GPU from this thread
     # release the context, otherwise memory leak might occur
+    gpu_context.pop()
     gpu_context.detach()
 
-    performance = (cnx*cny*cnz*ctx_count) / (time_2 - time_1)
+    # performance = numpy.float64(numpy.int128(cnx)*numpy.int128(cny)*numpy.int128(cnz)*numpy.int128(ctx_count)) / (time_2 - time_1)
 
-    return cout
+    return cuda_out
 
 
 def demo():
@@ -234,7 +316,7 @@ def demo():
 
     # TODO: Select local or remote execution path depending on which resource is available
 
-    pressurefield = beamsim_remote.delay(world.wavenumber,
+    pressurefield = beamsim_remote(world.wavenumber,
                                          world.rxPlane.x0,
                                          world.rxPlane.y0,
                                          world.rxPlane.z0,
@@ -247,7 +329,10 @@ def demo():
                                          elements_vectorized_local)
     time_end = time.clock()
     local_performance = world.get_ray_count() / (time_end-time_start)
-    print("got {:7.3f} MRays/s".format(local_performance*1e-6))
+    if cueBeamCore3Verbosity:
+        time_total = time_end - time_start
+        data_transfer_performance = pressurefield.shape[0]*pressurefield.shape[1]*8 / time_total
+        print("got {:7.3f} MRays/s, {:7.1f} MB/sec".format(local_performance*1e-6,data_transfer_performance/1024/1024))
     world.rxPlane.pressurefield = pressurefield
     example_plot(world)
 
