@@ -1,6 +1,9 @@
+% Demonstration: how to use cueBeam python module from Matlab
+
 
 % note: if the python source code is modified, it has to be explicitly re-loaded in Matlab
-clear classes
+% one has to do 'clear classes' in such case.
+% clear classes
 cueBeam=py.importlib.import_module('cueBeamCore3');
 py.importlib.reload(cueBeam);
 %% create an example scenario (world)
@@ -47,11 +50,11 @@ field=ndarray2mat(cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectori
 t2=now;
 
 % calculate performance stats
-ray_count=prod(size(field))*length(array_elements_z) ;
+ray_count=numel(field)*length(array_elements_z) ;
 t_roundtrip = (3600*24*(t2-t1));
 
 performance =  ray_count / t_roundtrip;
-datarate = 8*prod(size(field))/ t_roundtrip;
+datarate = 8*numel(field)/ t_roundtrip;
 fprintf('got %0.1f MRays/s, %0.3f MB/sec\n',performance*1e-6,datarate/1024/1024);
 
 %% display the field, dB scale
