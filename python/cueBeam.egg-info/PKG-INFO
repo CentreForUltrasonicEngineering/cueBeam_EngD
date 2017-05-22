@@ -1,0 +1,22 @@
+Metadata-Version: 1.1
+Name: cueBeam
+Version: 0.0.1
+Summary: Simple acoustic interference and beam forming simulation based on Huygens principle
+Home-page: http://www.strath.ac.uk
+Author: Jerzy Dziewierz
+Author-email: jerzy.dziewierz@strath.ac.uk
+License: License :: Free for non-commercial use
+Description: UNKNOWN
+Keywords: cueBeam cueArt acoustics ultrasound NDE beamforming beam forming
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Manufacturing
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Utilities
+Classifier: License :: Free for non-commercial use
+Classifier: Programming Language :: Python :: 3 :: Only

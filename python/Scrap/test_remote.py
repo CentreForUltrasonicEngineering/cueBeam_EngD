@@ -1,10 +1,10 @@
-import cueBeamCore3
-import cueBeamWorld
-from cueBeamCore3 import beamsim_through_celery
-from cueBeamCore3 import beamsim_gpu
+import time
+
 from cueBeamWorld import CueBeamWorld
 from cueBeamWorld import example_plot
-import time
+
+from cuebeam.cueBeamCore3 import beamsim_gpu
+from cuebeam.cueBeamCore3 import beamsim_through_celery
 
 world = CueBeamWorld()
 world.rxPlane.ny = 4096

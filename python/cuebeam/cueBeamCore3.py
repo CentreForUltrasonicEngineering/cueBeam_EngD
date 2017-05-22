@@ -1,15 +1,14 @@
 # import pycuda.autoinit # do not autoinit - I will initialize manually
-import math
-import pycuda.driver as drv
-import numpy
-import matplotlib.pyplot as plt
-import time
 import random
-from pycuda.compiler import SourceModule
+import time
+
+import numpy
+import pycuda.driver as drv
 import redis
 from celery import Celery
+from pycuda.compiler import SourceModule
 
-from cueBeamWorld import CueBeamWorld, example_plot
+from cuebeam.cueBeamWorld import CueBeamWorld, example_plot
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # CELERY SETTINGS # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
