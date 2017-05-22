@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='cueBeam',
-    version='0.0.1',
+    version='0.0.1a1',
     packages=setuptools.find_packages(exclude=['contrib', 'docs', 'tests*']),
     url='http://www.strath.ac.uk',
     license='License :: Free for non-commercial use', # license='Creative commons BY-NC-SA',
