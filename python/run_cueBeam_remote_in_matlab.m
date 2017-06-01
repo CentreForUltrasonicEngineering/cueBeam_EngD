@@ -28,7 +28,7 @@ y0=5.0e-3;
 z0 = 0.0e-3;
 
 % create an array
-element_count = 32;
+element_count = 64;
 element_spacing = 3e-3;
 
 array_elements_z=([1:element_count]*element_spacing); %#ok<NBRAK>
