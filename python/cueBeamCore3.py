@@ -3,10 +3,14 @@ import random
 import time
 
 import numpy
-import pycuda.driver as drv
+try:
+    import pycuda.driver as drv
+    from pycuda.compiler import SourceModule
+except:
+    pass
+
 import redis
 from celery import Celery
-from pycuda.compiler import SourceModule
 from cuebeam import cueBeamWorld
 from cuebeam.cueBeamWorld import example_plot
 
