@@ -1,8 +1,8 @@
 Metadata-Version: 1.1
 Name: cueBeam
-Version: 0.0.1
+Version: 0.0.1a2
 Summary: Simple acoustic interference and beam forming simulation based on Huygens principle
-Home-page: http://www.strath.ac.uk
+Home-page: https://uni.lardner.io/Jurek/cuebeam
 Author: Jerzy Dziewierz
 Author-email: jerzy.dziewierz@strath.ac.uk
 License: License :: Free for non-commercial use

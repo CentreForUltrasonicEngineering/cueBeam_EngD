@@ -7,8 +7,9 @@ import pycuda.driver as drv
 import redis
 from celery import Celery
 from pycuda.compiler import SourceModule
+from cuebeam import cueBeamWorld
+from cuebeam.cueBeamWorld import example_plot
 
-from cuebeam.cueBeamWorld import CueBeamWorld, example_plot
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # CELERY SETTINGS # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -292,10 +293,10 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
     return cuda_out
 
 
-def demo():
-    world = CueBeamWorld()
-    world.rxPlane.ny = 2048
-    world.rxPlane.nz = 512
+def cueBeamDemo():
+    world = cueBeamWorld.CueBeamWorld()
+    world.rxPlane.ny = 1024
+    world.rxPlane.nz = 256
     world.rxPlane.dy = 0.5e-3
     world.rxPlane.dz = 0.5e-3
     world.rxPlane.x0 = 0.0

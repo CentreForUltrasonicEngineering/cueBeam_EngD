@@ -3,10 +3,10 @@ import setuptools
 from setuptools import setup
 
 setup(
-    name='cueBeam',
-    version='0.0.1a1',
+    name='cuebeam',
+    version='0.0.1a2',
     packages=setuptools.find_packages(exclude=['contrib', 'docs', 'tests*']),
-    url='http://www.strath.ac.uk',
+    url='https://uni.lardner.io/Jurek/cuebeam',
     license='License :: Free for non-commercial use', # license='Creative commons BY-NC-SA',
     author='Jerzy Dziewierz',
     author_email='jerzy.dziewierz@strath.ac.uk',
