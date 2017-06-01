@@ -1,3 +1,5 @@
+.idea*
+dist*
 **/_build/
 .idea/misc.xml
 .idea/modules.xml
