@@ -20,22 +20,22 @@ dz = 1.0e-3;
 % number of pixels in the image
 nx = 1; 
 ny = 1024;
-nz = 320; % note: in this example, the array extends along Z, and the depth is Y
+nz = 256; % note: in this example, the array extends along Z, and the depth is Y
 
 % origin of the image
 x0=0.1e-3; % should be slightly off-centre to avoid division by zero
 y0=5.0e-3;
-z0 = 0.0e-3;
+z0 = -(nz/2)*dz;
 
 % create an array
-element_count = 64;
+element_count = 16;
 element_spacing = 3e-3;
 
 array_elements_z=([1:element_count]*element_spacing); %#ok<NBRAK>
 array_elements_z=array_elements_z-mean(array_elements_z); % centre around z-axis
 
 % phase fpr each element
-test_elements_p=linspace(0.0,0.0,length(array_elements_z));
+test_elements_p=linspace(0.0,4.0,length(array_elements_z));
 
 % encode the elements into an element description vector
 elements_vectorized=[]; %elements_vectorized=[x,y,z,amplitude,phase,zero];
@@ -46,7 +46,7 @@ end
 
 % call beamsim to do the work 
 t1=now;
-field=ndarray2mat(cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz))));
+field=ndarray2mat(cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'z0',z0)));
 t2=now;
 
 % calculate performance stats
@@ -55,14 +55,20 @@ t_roundtrip = (3600*24*(t2-t1));
 
 performance =  ray_count / t_roundtrip;
 datarate = 8*numel(field)/ t_roundtrip;
-fprintf('got %0.1f MRays/s, %0.3f MB/sec\n',performance*1e-6,datarate/1024/1024);
+fprintf('in %0.1f sec, got %0.1f MRays/s, %0.3f MB/sec\n',t_roundtrip,performance*1e-6,datarate/1024/1024);
 
 %% display the field, dB scale
+figure(1);
 y=linspace(y0,dy*ny,size(field,1));
 z=linspace(z0,dz*nz,size(field,2));
 field_decibels=20*log10(abs(field));
 field_decibels=field_decibels-max(field_decibels(:)); 
 handle_img=imagesc(z,y,field_decibels,[-40 0]); axis image
 xlabel('z-axis,meters'); ylabel('y-axis,meters');
+%% display a cross-section of the field at y=specificValue
+figure(2)
+CrossectionY=500e-3;
+CrossectionYIdx=round((CrossectionY-y0)/dy);
+CrossectionData=squeeze(field(CrossectionYIdx,:));
 
-
+plot(z,abs(CrossectionData))
