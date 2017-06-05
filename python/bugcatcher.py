@@ -10,7 +10,7 @@ def install_and_import(package):
         print('in ImportError');
         # import pip
         # print('trying to install the package')
-        #pip.main(['install', package])
+        # pip.main(['install', package])
         import os
         os.system('pip install bugsnag')
         print('')

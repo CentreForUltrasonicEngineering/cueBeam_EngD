@@ -265,6 +265,11 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
     # note: must reserve the output memory right here
     # note: for 2D values, the x must be == 1
     assert(nx == 1)
+    # prevent from the image size being too large
+    assert(ny < 4096+1)
+    assert(nz < 4096+1)
+    # prevent from the transducer description to be too large - you can remove this limitation later on
+    assert(ctx_count < 8192+1)
     cuda_out = numpy.zeros((int(cny), int(cnz))).astype(numpy.complex64)
 
     # prepare the GPU call : thread wave shape:
