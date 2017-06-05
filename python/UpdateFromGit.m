@@ -1,0 +1,1 @@
+system('git pull origin master -r --autostash')
