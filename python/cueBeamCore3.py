@@ -1,8 +1,11 @@
 # import pycuda.autoinit # do not autoinit - I will initialize manually
+import bugcatcher
+
 import random
 import time
 
 import numpy
+
 try:
     import pycuda.driver as drv
     from pycuda.compiler import SourceModule
