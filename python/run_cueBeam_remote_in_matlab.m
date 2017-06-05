@@ -13,15 +13,15 @@ wave_velocity_in_medium = 1450; % m/s; water=1450, plastic = 2800, steel = 5600
 wavelength=wave_velocity_in_medium/frequency;
 wavenumber=1/wavelength;
 %%
-ImgResMultiplier=5;
+ImgResMultiplier=3;
 % image resolution
 dx = 1.0e-3/ImgResMultiplier;
 dy = 1.0e-3/ImgResMultiplier;
 dz = 1.0e-3/ImgResMultiplier;
 % number of pixels in the imag
 nx = 1;
-ny = 512*ImgResMultiplier;
-nz = 512*ImgResMultiplier; % note: in this example, the array extends along Z, and the depth is Y
+ny = ceil(512*ImgResMultiplier);
+nz = ceil(512*ImgResMultiplier); % note: in this example, the array extends along Z, and the depth is Y
 
 
 % origin of the image
@@ -59,7 +59,8 @@ end
 
 % call beamsim to do the work
 t1=now;
-field=ndarray2mat(cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'z0',z0)));
+field_py=cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'z0',z0));
+field=ndarray2mat2(field_py);
 t2=now;
 
 calculate_benchmark_figures=true;
@@ -71,6 +72,7 @@ if calculate_benchmark_figures
     performance =  ray_count / t_roundtrip;
     datarate = 8*numel(field)/ t_roundtrip;
     fprintf('got %0.1f MRays/s, %0.3f MB/sec\n',performance*1e-6,datarate/1024/1024);
+    fprintf('image size: %0.1f MB\n',length(uint8(field_py.base))  / 1024/1024);
 end
 %% display the field, dB scale
 figure(1); clf;
