@@ -18,18 +18,17 @@ ImgResMultiplier=0.5;
 dx = 1.0e-3/ImgResMultiplier;
 dy = 1.0e-3/ImgResMultiplier;
 dz = 1.0e-3/ImgResMultiplier;
-% number of pixels in the image
+% number of pixels in the imag
 nx = 1;
 ny = 512*ImgResMultiplier;
 nz = 512*ImgResMultiplier; % note: in this example, the array extends along Z, and the depth is Y
 
+
 % origin of the image
 x0=1e-3; % should be slightly off-centre to avoid division by zero
 y0=5.0e-3;
-z0 = -(dz/2)*nz;
-
 % create an array
-element_count = 32;
+element_count = 16;
 element_spacing = 3e-3;
 
 array_elements_z=([1:element_count]*element_spacing); %#ok<NBRAK>
@@ -37,7 +36,7 @@ array_elements_z=array_elements_z-mean(array_elements_z); % centre around z-axis
 
 % phase for each element - simple case. Simply bend the phases a bit.
 test_elements_p=linspace(0.0,4,length(array_elements_z));
-% phase for each element - use focussing.
+% phase for each element - use focussing. Overwrites previous phase
 focus_x=0;
 focus_y=0.3;
 focus_z=0.2;
@@ -46,6 +45,8 @@ for idxE=1:length(array_elements_z)
     phase_distance=distance_element_to_focus/wavelength;
     test_elements_p(idxE)=phase_distance;
 end
+
+
 
 % encode the elements into an element description vector
 elements_vectorized=[]; %elements_vectorized=[x,y,z,amplitude,phase,zero];
@@ -73,12 +74,14 @@ end
 figure(1); clf;
 y=linspace(y0,y0+dy*ny,size(field,1));
 z=linspace(z0,z0+dz*nz,size(field,2));
+
 field_decibels=20*log10(abs(field));
 field_decibels=field_decibels-max(field_decibels(:));
 handle_img=imagesc(z,y,field_decibels,[-40 0]); axis image
 hold on;
 plot(array_elements_z,zeros(size(array_elements_z)),'r.')
 xlabel('z-axis,meters'); ylabel('y-axis,meters');
+
 %% display the field, line
 figure(2); clf;
 y_crossection=focus_y;
