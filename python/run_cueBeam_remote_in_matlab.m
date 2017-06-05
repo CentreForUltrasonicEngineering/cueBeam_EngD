@@ -13,7 +13,7 @@ wave_velocity_in_medium = 1450; % m/s; water=1450, plastic = 2800, steel = 5600
 wavelength=wave_velocity_in_medium/frequency;
 wavenumber=1/wavelength;
 %%
-ImgResMultiplier=0.5;
+ImgResMultiplier=5;
 % image resolution
 dx = 1.0e-3/ImgResMultiplier;
 dy = 1.0e-3/ImgResMultiplier;
@@ -27,9 +27,11 @@ nz = 512*ImgResMultiplier; % note: in this example, the array extends along Z, a
 % origin of the image
 x0=1e-3; % should be slightly off-centre to avoid division by zero
 y0=5.0e-3;
+z0=-(nz/2)*dz;
+
 % create an array
 element_count = 16;
-element_spacing = 3e-3;
+element_spacing = 1e-3;
 
 array_elements_z=([1:element_count]*element_spacing); %#ok<NBRAK>
 array_elements_z=array_elements_z-mean(array_elements_z); % centre around z-axis
@@ -60,7 +62,7 @@ t1=now;
 field=ndarray2mat(cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'z0',z0)));
 t2=now;
 
-calculate_benchmark_figures=false;
+calculate_benchmark_figures=true;
 if calculate_benchmark_figures
     % calculate performance stats
     ray_count=numel(field)*length(array_elements_z) ;
