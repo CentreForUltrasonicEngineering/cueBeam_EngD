@@ -20,8 +20,8 @@ dy = 1.0e-3/ImgResMultiplier;
 dz = 1.0e-3/ImgResMultiplier;
 % number of pixels in the imag
 nx = 1; % ! Note, in this version, nx must be 1. 
-ny = ceil(512*ImgResMultiplier);
-nz = ceil(256*ImgResMultiplier); % note: in this example, the array extends along Z, and the depth is Y
+ny = ceil(256*ImgResMultiplier);
+nz = ceil(512*ImgResMultiplier); % note: in this example, the array extends along Z, and the depth is Y
 
 
 % origin of the image
@@ -31,7 +31,7 @@ z0=-(nz/2)*dz;
 
 % create an array
 element_count = 16;
-element_spacing = 3e-3;
+element_spacing = 4e-3;
 
 array_elements_z=([1:element_count]*element_spacing); %#ok<NBRAK>
 array_elements_z=array_elements_z-mean(array_elements_z); % centre around z-axis
@@ -106,19 +106,41 @@ hold on;
 % find how many pixels are above -3dB?
 PixelsAbove3dB=y_dataline_abs>-3;
 % figure out the area 'nearby' by replicating the beam width to the left and right
-PixelsNearby=circshift(PixelsAbove3dB,[0 sum(PixelsAbove3dB)]);
+PixelsNearbyR=circshift(PixelsAbove3dB,[0 1*sum(PixelsAbove3dB)]);
+PixelsNearbyL=circshift(PixelsAbove3dB,[0 -1*sum(PixelsAbove3dB)]);
+PixelsAwayR=circshift(PixelsAbove3dB,[0 2*sum(PixelsAbove3dB)]);
+PixelsAwayL=circshift(PixelsAbove3dB,[0 -2*sum(PixelsAbove3dB)]);
 
+PixelsAroundMain = PixelsAbove3dB+PixelsNearbyR+PixelsNearbyL+PixelsAwayR+PixelsAwayL;
+plot(z,PixelsAroundMain)
 BeamWidth=sum(PixelsAbove3dB)*dz;
-EnergyRatio=sum(10.^(y_dataline_abs(PixelsAbove3dB)/20))/sum(10.^(y_dataline_abs(PixelsNearby)/20));
+EnergyRatio=sum(10.^(y_dataline_abs(PixelsNearby)/20))/sum(10.^(y_dataline_abs(PixelsAbove3dB)/20));
 EnergyRatiodB=20*log10(EnergyRatio);
-title(sprintf('beamwidth: %0.1f mm, SNR = %0.1f dB\n',BeamWidth,EnergyRatiodB))
+
+% make sure it is a zero-one vector only
+PixelsAroundMain(PixelsAroundMain>0)=1; PixelsAroundMain(PixelsAroundMain<1)=0;
+% mask off the main lobe signal and it's surrounding
+y_dataline_abs_masked=y_dataline_abs;
+y_dataline_abs_masked(PixelsAroundMain>0)=NaN;
+
+[PeakSidelobeBeyondMain, PeakSidelobeBeyondMainLocIdx ] = max(y_dataline_abs_masked);
+PeakSidelobeBeyondMainLocation=z(PeakSidelobeBeyondMainLocIdx);
+
+% combine the effect of near-lobe energy and the peak off-axis lobe
+SNR_Score = max(EnergyRatiodB,PeakSidelobeBeyondMain);
+
+title(sprintf('beamwidth: %0.1f mm, SNR = %0.1f dB, worst sidelobe = %0.1f dB\n',BeamWidth*1e3,EnergyRatiodB,PeakSidelobeBeyondMain))
+
+
+% check for grating lobes here 
+% TODO: Check for grating lobes here
 
 % plot over the areas considered
 zLeft=z(find(PixelsAbove3dB,1,'first'));
 zRight=z(find(PixelsAbove3dB,1,'last'));
-hFillCore=fill([zLeft zLeft zRight zRight],[0 -30 -30 0],'g')
-hFillCore.FaceAlpha = 0.1
-zLeftNearby=z(find(PixelsNearby,1,'first'));
-zRightNearby=z(find(PixelsNearby,1,'last'));
-hFillNearby=fill([zLeftNearby zLeftNearby zRightNearby zRightNearby],[0 -30 -30 0],'r')
-hFillNearby.FaceAlpha = 0.1
+hFillCore=fill([zLeft zLeft zRight zRight],[0 -30 -30 0],'g');
+hFillCore.FaceAlpha = 0.1;
+zLeftNearby=z(find(PixelsNearbyR,1,'first'));
+zRightNearby=z(find(PixelsNearbyR,1,'last'));
+hFillNearby=fill([zLeftNearby zLeftNearby zRightNearby zRightNearby],[0 -30 -30 0],'r');
+hFillNearby.FaceAlpha = 0.1;
