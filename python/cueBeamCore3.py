@@ -3,6 +3,7 @@ import bugcatcher
 
 import random
 import time
+import math
 
 import numpy
 
@@ -84,6 +85,16 @@ def beamsim_through_celery(k: float = 1000.0,
         print('got work, {} beams.'.format(nx*ny*nz*(len(elements_vectorized)/6)))
 
     return beamsim_gpu(k, x0, y0, z0, nx, ny, nz, dx, dy, dz, elements_vectorized)
+
+
+@CELERY.task()
+def beamsim_lambert_through_celery(
+        elements_vectorized = None,
+        k: float = 1000.0,
+        lambert_radius: float = 100e-3,
+        lambert_map_density: float = 1e-3):
+    return cuebeamlambert(elements_vectorized, k, lambert_radius,lambert_map_density)
+
 
 
 # same as previous, but this time, nx>1 is allowed
@@ -304,6 +315,182 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
 
     return cuda_out
 
+
+def cuebeamlambert(
+    elements_vectorized=None,
+    k: float = 1000.0,
+    lambert_radius: float = 100e-3,
+    lambert_map_density: float = 1e-3):
+
+    # matlab:: [img_lambert lambert_x lambert_y lambert_z] = cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
+    if elements_vectorized is None:
+        elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+
+    # note, that on a remote worker, there is never a saying where this thread wakes up
+    # therefore i must be extra carefull to always initialize all the resources needed
+
+    # initialize manually
+    drv.init()
+    # local_device_count = drv.Device.count()
+    # print('found {} GPUs'.format(local_device_count))
+    # choose one of the GPUs at random
+    gpu_to_take = random.choice(range(drv.Device.count()))
+    # take device 0 for now
+    gpu_context = drv.Device(gpu_to_take).make_context()
+    gpu_context.push()  # make the context active
+
+    code_text_lambert=SourceModule("""
+    
+    #include <stdio.h>
+
+#define pi2 2.0f*3.141592653589793f
+
+    __global__ void BeamsimLambertKernel ( float *tx, unsigned int tx_length, float *out,
+        unsigned int n, float d, float r,
+        float k,float *xp, float *yp, float *zp)
+{
+    unsigned int offset=0;
+    unsigned int ix,iy,itx=0;
+    float pressure,distance,kd,pressure_re,pressure_im=0;
+    float dist2=0;
+    float dix,diy,diz,lambert_x,lambert_y,lambert_z=0;
+    float xbase,ybase,rho2,rhoi,cosphi,sinphi,cosl,sinl=0;
+    float xbase0=-sqrtf((float)2)+(float)1e-8;
+    // calculate ix,iy from thread built-in variables
+    ix = blockIdx.x * blockDim.x + threadIdx.x;
+    iy = blockIdx.y * blockDim.y + threadIdx.y;
+    //ix=0; // debug //
+    //C// for (iy=0; iy<ny; iy++)
+    //C//  for (ix=0; ix<nx; ix++)
+    
+    // make sure that this thread won't try to calculate non-existent receiver
+    if (iy>n) return;
+    
+    if (ix>n) return;
+    
+    // start actual calculation
+    pressure_re=0;
+    pressure_im=0;
+    
+    xbase=(float)ix*d+xbase0;
+    ybase=(float)iy*d+xbase0; // it would be an optimisation not to recalculate it for each pixel, this has to stay here be due to future port to CUDA where each pixel has it's own thread
+    rho2=xbase*xbase+ybase*ybase;
+    offset=ix+n*iy;
+    if (rho2>(float)2)
+    {
+        out[offset]=0;
+        xp[offset]=0;
+        yp[offset]=0;
+        zp[offset]=0;
+        return;
+    }
+    rhoi=rsqrtf(rho2);
+    cosl=-ybase*rhoi;
+    cosphi=sqrtf(rho2-rho2*rho2/(float)4);
+    lambert_x=r*cosl*cosphi;
+    
+    sinl=xbase*rhoi;
+    lambert_y=r*sinl*cosphi;
+    sinphi=(float)1-rho2/(float)2;
+    lambert_z=r*sinphi;
+    
+    xp[offset]=lambert_x;
+    yp[offset]=lambert_y;
+    zp[offset]=lambert_z;
+    
+    for (itx=0; itx<tx_length*6; itx=itx+6) // this hopefully acesses the same memory location for each thread and therefore will be cached
+    {
+        //    distance=single(sqrt( (ix*dx+x0-tx(1,itx)).^2 + (iy*dy+y0-tx(2,itx)).^2 + (iz*dz+z0-tx(3,itx)).^2 ));
+        dix=(lambert_x-tx[0+itx]);
+        diy=(lambert_y-tx[1+itx]);
+        diz=(lambert_z-tx[2+itx]);
+        distance=sqrtf( dix*dix + diy*diy + diz*diz );
+        kd=-k*distance+tx[5+itx];
+        dist2=tx[4+itx]/(6.283185307179586f*distance); //equals 2*pi                
+        pressure_re=pressure_re+__cosf(kd)*dist2;
+        pressure_im=pressure_im+__sinf(kd)*dist2;
+        
+        // note: __sinf is an simlpified sin function that yields less accurate result. May need to switch to full sin for final product, ok for testing for now
+        
+        // note 2: function sincosf(...) may be faster in this case - calculates both sin and cos. but since it requires additional accumulators,
+        // a detailed test will be required to find out what's faster.
+        
+    }
+    // mem write    
+    // pressure=sqrtf(pressure_re*pressure_re+pressure_im*pressure_im);
+    // in CUDA, i need to calculate rx array memory offset manually for each thread:
+    //offset=ix+nx*iy+(ny*nx)*iz;    
+    // out[offset]=(float)pressure; //left for debug
+    offset=2*ix+n*iy;  
+    out[offset]=(float)pressure_re;
+    offset++; // go to the imaginary value pointer
+    out[offset]=(float)pressure_im;
+
+}
+
+    """)
+    # instantiate the code into the compiler
+    beamsim_lambert_kernel = code_text_lambert.get_function("BeamsimLambertKernel")
+
+    n = math.ceil(6.283185307179586 * lambert_radius / lambert_map_density)
+    d = 2.0 * math.sqrt(2/n)
+    n = 1 + math.ceil(2*math.sqrt(2)/d)
+    # d = 2 * sqrtf((float)    2) / npts; # distance between pixels in lambert map
+    # n = 1 + (unsigned int)ceilf(2 * sqrtf(2) / d); // for some reason this fails to match with pure-C version if i don't add 1 here
+
+    # convert the values from pythonic to Cudific
+    ctx = numpy.asarray(elements_vectorized).astype(numpy.float32)
+    ctx_count = numpy.int32(len(ctx) / 6)
+    cuda_out = numpy.zeros((int(n), int(n))).astype(numpy.complex64)
+    cn = numpy.int32(n)
+    cd = numpy.float32(d)
+
+    # # ============= FRONTIER
+    # unsigned int n, float d, float r, float k, float * xp, float * yp, float * zp)
+    cr = numpy.float32(lambert_radius)
+    ck = numpy.float32(k)
+
+    cuda_out_xp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
+    cuda_out_yp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
+    cuda_out_zp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
+
+
+    # note: must reserve the output memory right here
+    # note: for 2D values, the x must be == 1
+
+    # prevent from the transducer description to be too large - you can remove this limitation later on
+    assert (ctx_count < 81920 + 1)
+
+
+    # prepare the GPU call : thread wave shape:
+    threads_x = 16
+    threads_y = 64
+    threads_z = 1
+    blocks_x = int((int(cn) / threads_y) + 1)
+    blocks_y = int((int(cn) / threads_z) + 1)
+    blocks_z = 1
+
+    # start the timer!
+    # time_1 = time.clock()
+# ( float *tx, unsigned int tx_length, float *out, unsigned int n, float d, float r, float k,float *xp, float *yp, float *zp)
+    beamsim_lambert_kernel(
+        drv.In(ctx),
+        ctx_count,
+        drv.Out(cuda_out),
+        cn, cd, cr, ck,
+        drv.Out(cuda_out_xp),
+        drv.Out(cuda_out_yp),
+        drv.Out(cuda_out_zp),
+
+        block=(threads_x, threads_y, threads_z), grid=(blocks_x, blocks_y, blocks_z))
+
+    # time_2 = time.clock()
+
+    # release the GPU from this thread
+    # release the context, otherwise memory leak might occur
+    gpu_context.pop()
+    gpu_context.detach()
+    return cuda_out
 
 def cueBeamDemo():
     world = cueBeamWorld.CueBeamWorld()
