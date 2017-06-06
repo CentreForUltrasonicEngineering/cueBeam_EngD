@@ -15,13 +15,13 @@ end
 
 % enable line smoothing to make plots nicer
 try
-if simulation.LineSmoothing
-    set(0,'DefaultLineLineSmoothing','on')
-    set(0,'DefaultPatchLineSmoothing','on')
-else
-    set(0,'DefaultLineLineSmoothing','off')
-    set(0,'DefaultPatchLineSmoothing','off')
-end
+    if simulation.LineSmoothing
+        set(0,'DefaultLineLineSmoothing','on')
+        set(0,'DefaultPatchLineSmoothing','on')
+    else
+        set(0,'DefaultLineLineSmoothing','off')
+        set(0,'DefaultPatchLineSmoothing','off')
+    end
 catch E % silent fallover
 end
 
@@ -93,7 +93,7 @@ if simulation.doplots
     bar([probe.ToF]); title('firing delays applied to array elements');
     ylabel('delay[s]'); xlabel('element number[-]');
     if simulation.doprints
-        %print('-dpng',simulation.printresolution,sprintf('%s\\%sdelays.png',simulation.prefix,simulation.prefix));        
+        %print('-dpng',simulation.printresolution,sprintf('%s\\%sdelays.png',simulation.prefix,simulation.prefix));
         cueBeam.myaa(simulation,sprintf('%s\\%sdelays.png',simulation.prefix,simulation.prefix));
     end
     % export delays to PZFlex format
@@ -114,10 +114,10 @@ tx=[]; % reset emitter points description
 for idx=1:probe.n
     % width direction
     npts_x=ceil(probe.e/enviroment.dx_simulation);
-    px=linspace(probe.x(idx)-probe.e/2,probe.x(idx)+probe.e/2,npts_x); % x-coordinate points
+    qpx=linspace(probe.x(idx)-probe.e/2,probe.x(idx)+probe.e/2,npts_x); % x-coordinate points
     npts_y=ceil(probe.W/enviroment.dx_simulation);
-    py=linspace(probe.y(idx)-probe.W/2,probe.y(idx)+probe.W/2,npts_y);
-    [pxx pyy]=meshgrid(px,py); pxx=pxx(:); pyy=pyy(:);
+    qpy=linspace(probe.y(idx)-probe.W/2,probe.y(idx)+probe.W/2,npts_y);
+    [pxx pyy]=meshgrid(qpx,qpy); pxx=pxx(:); pyy=pyy(:);
     pzz=zeros(size(pyy));
     pzeros=zeros(size(pyy));
     element_steering_phase=2*pi*probe.distanceToToFocalPoint(idx)/enviroment.wavelength;
@@ -130,136 +130,166 @@ tx=single(tx);
 probe.tx=tx;
 
 %% make lambert map image
-
-% define image parameters
-lambert_radius=single(beam.focal_distance);
-simulation.lambert_radius=lambert_radius;
-lambert_map_density=single(simulation.lambert_map_density);
-
-
-tic
-[img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
-tbenchmark=toc;
-% uncomment for benchmark:
-% raycount=numel(img_lambert)*size(tx,1); rayspeed=raycount/tout; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
-% convert image to decibel scale
-img_db=20*log10(img_lambert./max(img_lambert(:)));
-beam.img_lambert=img_db;
-beam.img_lambert_x=lambert_x;
-beam.img_lambert_y=lambert_y;
-beam.img_lambert_z=lambert_z;
-lambert_coords=linspace(-90,90,size(img_db,1));
-beam.img_lambert_coords=lambert_coords;
-
-% display lambert map image
-
-if simulation.doplots
-    figure(figureOffset+1); clf;
-    set(gcf,'Name','Lambert map, dB range','NumberTitle','off');
-    clf;
-    imagesc(lambert_coords,lambert_coords,img_db,[beam.display_limit_db 0]); colorbar; axis image;
-    title(sprintf('Lambert map : dB range\npixel edge length: %0.2f mm',1e3*lambert_map_density));
-    xlabel('angle[deg]'); ylabel('angle[deg]');
-    if simulation.doprints
-        %print('-dpng',simulation.printresolution,sprintf('%s\\%slambert_map.png',simulation.prefix,simulation.prefix));
-        cueBeam.myaa(simulation,sprintf('%s\\%slambert_map.png',simulation.prefix,simulation.prefix));
-    end
+if simulation.doLambertSection % Note! it is known that the Lambert code is buggy now. Do not use for the 2017 exercise.
+    % define image parameters
+    lambert_radius=single(beam.focal_distance);
+    simulation.lambert_radius=lambert_radius;
+    lambert_map_density=single(simulation.lambert_map_density);
     
-end
+    
+    tic
+    [img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
+    tbenchmark=toc;
+    % uncomment for benchmark:
+    % raycount=numel(img_lambert)*size(tx,1); rayspeed=raycount/tout; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
+    % convert image to decibel scale
+    img_db=20*log10(img_lambert./max(img_lambert(:)));
+    beam.img_lambert=img_db;
+    beam.img_lambert_x=lambert_x;
+    beam.img_lambert_y=lambert_y;
+    beam.img_lambert_z=lambert_z;
+    lambert_coords=linspace(-90,90,size(img_db,1));
+    beam.img_lambert_coords=lambert_coords;
+    
+    % display lambert map image
+    
+    if simulation.doplots
+        figure(figureOffset+1); clf;
+        set(gcf,'Name','Lambert map, dB range','NumberTitle','off');
+        clf;
+        imagesc(lambert_coords,lambert_coords,img_db,[beam.display_limit_db 0]); colorbar; axis image;
+        title(sprintf('Lambert map : dB range\npixel edge length: %0.2f mm',1e3*lambert_map_density));
+        xlabel('angle[deg]'); ylabel('angle[deg]');
+        if simulation.doprints
+            %print('-dpng',simulation.printresolution,sprintf('%s\\%slambert_map.png',simulation.prefix,simulation.prefix));
+            cueBeam.myaa(simulation,sprintf('%s\\%slambert_map.png',simulation.prefix,simulation.prefix));
+        end
+        
+    end
+end % end doing lambert section.
 %%
 % make XZ cross-section image
-% define XZ image parameters
-resolution=single(simulation.xy_resolution);
-
-x0=single(-simulation.xy_x_extent); x1=single(simulation.xy_x_extent); dx=resolution; nx=uint32(ceil((x1-x0)/dx));
-y0=single(0); y1=single(0); dy=resolution; ny=uint32(ceil((y1-y0)/dy)+1);
-z0=single(simulation.xy_z0); z1=single(simulation.xy_z_extent); dz=resolution; nz=uint32(ceil((z1-z0)/dz));
-
-% calculated image coordinates
-xpoints=x0:dx:(x0+dx*single(nx-1));
-ypoints=y0:dy:(y0+dy*single(ny-1));
-zpoints=z0:dz:(z0+dz*single(nz-1));
-
-% perform beam simulation
-tic;
-img_xz=squeeze(cueBeam.cueBeam_xz(tx',enviroment.wavenumber,x0,y0,z0,nx,ny,nz,dx,dy,dz));
-tbenchmark=toc;
-
-% uncomment for benchmark
-%raycount=nx*ny*nz*size(tx,1); rayspeed=raycount/tbenchmark; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
-
-% convert image to decibel scale
-img_xz_db=20*log10(img_xz./max(img_xz(:)));
-
-beam.img_xz_xpoints=xpoints;
-beam.img_xz_ypoints=ypoints;
-beam.img_xz_zpoints=zpoints;
-beam.beam_img_xz=img_xz_db;
-
-if simulation.doplots
-    figure(figureOffset+2); clf;
-    set(gcf,'Name','XZ cross-section','NumberTitle','off');
-    imagesc([z0 z1],[x0 x1],img_xz_db,[beam.display_limit_db 0]);
-    colorbar;
-    title('XZ cross-section: dB range');
-    xlabel('z-coordinate[m]'); ylabel('x-coordinate[m]');
-    hold on;
-    plot(tx(:,3),tx(:,1),'go');
-    axis image
-    set(gca,'YDir','normal')
-    if simulation.doprints
-        %print('-dpng',simulation.printresolution,sprintf('%s\\%sbeam_xy.png',simulation.prefix,simulation.prefix));
-        cueBeam.myaa(simulation,sprintf('%s\\%sbeam_xy.png',simulation.prefix,simulation.prefix));
+if simulation.doXZBeamSection
+    % define XZ image parameters
+    resolution=single(simulation.xy_resolution);
+    
+    x0=single(-simulation.xy_x_extent); x1=single(simulation.xy_x_extent); dx=resolution; nx=uint32(ceil((x1-x0)/dx));
+    y0=single(0); y1=single(0); dy=resolution; ny=uint32(ceil((y1-y0)/dy)+1);
+    z0=single(simulation.xy_z0); z1=single(simulation.xy_z_extent); dz=resolution; nz=uint32(ceil((z1-z0)/dz));
+    
+    % calculated image coordinates
+    xpoints=x0:dx:(x0+dx*single(nx-1));
+    ypoints=y0:dy:(y0+dy*single(ny-1));
+    zpoints=z0:dz:(z0+dz*single(nz-1));
+    
+    % perform beam simulation
+    % !! Note: re-routing the call from cueBeam to cueBeamPy here:
+    % %
+    % % img_xz=squeeze(cueBeam.cueBeam_xz(tx',enviroment.wavenumber,x0,y0,z0,nx,ny,nz,dx,dy,dz));
+    % % tbenchmark=toc;
+    % attempt to load the same thing from python
+    % Must adapt some of the parameters:
+    
+    % mex format:                   [pxx pyy pzz pzeros pfa pff]
+    % elements_vectorized format:   [x   y   z   amp    phase tmp]
+    tic;
+    elements_vectorized_tmp=tx(:,[2 1 3 5 6 4]);
+    elements_vectorized_tmp=elements_vectorized_tmp';
+    elements_vectorized=elements_vectorized_tmp(:);
+    pnx=1; % should be ny
+    pny=nx;
+    pnz=nz;
+    % note that the x/y dimensions are swapped in this call. This is intended.
+    field_xz_py=cueBeamPy.beamsim_remote(pyargs('k',enviroment.wavenumber,'elements_vectorized',elements_vectorized','dx',dy,'dy',dx,'dz',dz,'nx',uint32(pnx),'ny',uint32(pny),'nz',uint32(pnz),'x0',y0,'y0',x0,'z0',z0));
+    field_xz=abs(ndarray2mat2(field_xz_py));
+    
+    tbenchmark=toc;
+    %figure(7); subplot(2,1,1); imagesc(img_xz); subplot(2,1,2); imagesc(field_xz)
+    
+    % route the result back:
+    img_xz = field_xz;
+    
+    % uncomment for benchmark
+    %raycount=nx*ny*nz*size(tx,1); rayspeed=raycount/tbenchmark; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
+    
+    % convert image to decibel scale
+    img_xz_db=20*log10(img_xz./max(img_xz(:)));
+    
+    beam.img_xz_xpoints=xpoints;
+    beam.img_xz_ypoints=ypoints;
+    beam.img_xz_zpoints=zpoints;
+    beam.beam_img_xz=img_xz_db;
+    
+    if simulation.doplots
+        figure(figureOffset+2); clf;
+        set(gcf,'Name','XZ cross-section','NumberTitle','off');
+        imagesc([z0 z1],[x0 x1],img_xz_db,[beam.display_limit_db 0]);
+        colorbar;
+        title('XZ cross-section: dB range');
+        xlabel('z-coordinate[m]'); ylabel('x-coordinate[m]');
+        hold on;
+        plot(tx(:,3),tx(:,1),'go');
+        axis image
+        set(gca,'YDir','normal')
+        if simulation.doprints
+            %print('-dpng',simulation.printresolution,sprintf('%s\\%sbeam_xy.png',simulation.prefix,simulation.prefix));
+            cueBeam.myaa(simulation,sprintf('%s\\%sbeam_xy.png',simulation.prefix,simulation.prefix));
+        end
+        % plot the same as contour
+        figure(figureOffset+9); clf;
+        set(gcf,'Name','XZ cross-section contour','NumberTitle','off');
+        contours=[-20 -6 -3];
+        [C h]=contour(zpoints,xpoints,img_xz_db,contours);
+        set(h,'ShowText','on','TextStep',get(h,'LevelStep')*2)
+        set(h,'LineWidth',2);
+        title('XZ cross-section, contour: dB range');
+        xlabel('z-coordinate[m]'); ylabel('x-coordinate[m]');
+        hold on;
+        plot(tx(:,3),tx(:,1),'go');
+        axis image;
+        ylim([min(xpoints) max(xpoints)])
+        grid on;
+        colorbar;
+        set(gca,'YDir','normal')
+        if simulation.doprints
+            %print('-dpng',simulation.printresolution,sprintf('%s\\%sbeam_xy_contour.png',simulation.prefix,simulation.prefix));
+            cueBeam.myaa(simulation,sprintf('%s\\%sbeam_xy_contour.png',simulation.prefix,simulation.prefix));
+        end
     end
-    % plot the same as contour
-    figure(figureOffset+9); clf;
-    set(gcf,'Name','XZ cross-section contour','NumberTitle','off');
-    contours=[-20 -6 -3];
-    [C h]=contour(zpoints,xpoints,img_xz_db,contours);
-    set(h,'ShowText','on','TextStep',get(h,'LevelStep')*2)
-    set(h,'LineWidth',2);
-    title('XZ cross-section, contour: dB range');
-    xlabel('z-coordinate[m]'); ylabel('x-coordinate[m]');
-    hold on;
-    plot(tx(:,3),tx(:,1),'go');
-    axis image;
-    ylim([min(xpoints) max(xpoints)])
-    grid on;
-    colorbar;
-    set(gca,'YDir','normal')
-    if simulation.doprints
-        %print('-dpng',simulation.printresolution,sprintf('%s\\%sbeam_xy_contour.png',simulation.prefix,simulation.prefix));
-        cueBeam.myaa(simulation,sprintf('%s\\%sbeam_xy_contour.png',simulation.prefix,simulation.prefix));
-    end
-end
+end % if do XZ section
 %% prepare 3D display of XZ
 if simulation.do3Dplot1
     figure(figureOffset+3); clf;
     set(gcf,'Name','3D preview','NumberTitle','off');
     
     plot3(tx(:,1),tx(:,2),tx(:,3),'r.'); hold on;
+    if simulation.doXZBeamSection
+        % create xz mesh
+        [xpp zpp]=meshgrid(xpoints,zpoints); xpp=xpp(:); zpp=zpp(:); ypp=zeros(size(xpp));
+        tri=delaunay(double(xpp),double(zpp));
+        cpp=img_xz_db'; cpp=cpp(:);
+        cpp_alpha=cpp; cpp_alpha(cpp>-20)=1; cpp_alpha(cpp<=-20)=0.1;
+        cpp_alpha(1)=0;
+        hs=trisurf(tri,xpp,ypp,zpp,cpp);
+        set(hs,'LineStyle','none');
+        set(hs,'FaceVertexAlphaData',cpp_alpha);
+        set(hs,'FaceAlpha','interp')
+        shading interp
+        
+        
+    end % the XZ section
     
-    % create xz mesh
-    [xpp zpp]=meshgrid(xpoints,zpoints); xpp=xpp(:); zpp=zpp(:); ypp=zeros(size(xpp));
-    tri=delaunay(double(xpp),double(zpp));
-    cpp=img_xz_db'; cpp=cpp(:);
-    cpp_alpha=cpp; cpp_alpha(cpp>-20)=1; cpp_alpha(cpp<=-20)=0.1;
-    cpp_alpha(1)=0;
-    hs=trisurf(tri,xpp,ypp,zpp,cpp);
-    set(hs,'LineStyle','none');
-    set(hs,'FaceVertexAlphaData',cpp_alpha);
-    set(hs,'FaceAlpha','interp')
-    shading interp
-    img_db_alpha=zeros(size(img_db));
-    img_db_alpha(img_db>beam.display_limit_db)=1;
-    img_db_alpha(img_db<beam.display_limit_db)=0.03;
-    img_db_alpha(1,1)=0;
-    hl=surf(lambert_x,lambert_y,lambert_z,double(img_db));
-    set(hl,'LineStyle','none');
-    set(hl,'AlphaData',img_db_alpha)
-    set(hl,'FaceAlpha','interp')
-    set(hl,'AlphaDataMapping','scaled')
-    
+    if simulation.doLambertSection
+        img_db_alpha=zeros(size(img_db));
+        img_db_alpha(img_db>beam.display_limit_db)=1;
+        img_db_alpha(img_db<beam.display_limit_db)=0.03;
+        img_db_alpha(1,1)=0;
+        hl=surf(lambert_x,lambert_y,lambert_z,double(img_db));
+        set(hl,'LineStyle','none');
+        set(hl,'AlphaData',img_db_alpha)
+        set(hl,'FaceAlpha','interp')
+        set(hl,'AlphaDataMapping','scaled')
+    end % doLambertSection
     caxis([beam.display_limit_db 0])
     axis image;
     camproj persp
@@ -271,7 +301,7 @@ if simulation.do3Dplot1
 end % simulation.do3Dplot
 
 %% do 3D beam and export it to Voreen
-if simulation.do3DBeam
+if simulation.do3DBeam    
     if simulation.verbose
         fprintf('3D volume slices left: -----');
     end

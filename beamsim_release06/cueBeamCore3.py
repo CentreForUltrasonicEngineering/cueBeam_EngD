@@ -24,12 +24,10 @@ from cuebeam.cueBeamWorld import example_plot
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # storage for dynamically stored functions
-# RSTORE = redis.StrictRedis('EEE-mimir.ds.strath.ac.uk', port=6379, db=1)
-RSTORE = redis.StrictRedis('eee-ultra26.ds.strath.ac.uk', port=6379, db=1)
+RSTORE = redis.StrictRedis('EEE-mimir.ds.strath.ac.uk', port=6379, db=1)
 # connection to the celery object, broker and broker's back-end
 # CELERY = Celery('tasks', broker='amqp://guest:guest@192.168.0.43:5672/',backend='redis://192.168.0.43:6379/0')
-#CELERY = Celery('tasks', broker='amqp://guest:guest@EEE-mimir.ds.strath.ac.uk/',backend='redis://EEE-mimir.ds.strath.ac.uk/0')
-CELERY = Celery('tasks', broker='amqp://guest:guest@eee-ultra26.ds.strath.ac.uk/',backend='redis://eee-ultra26.ds.strath.ac.uk/0')
+CELERY = Celery('tasks', broker='amqp://guest:guest@EEE-mimir.ds.strath.ac.uk/',backend='redis://EEE-mimir.ds.strath.ac.uk/0')
 
 CELERY.conf.accept_content = ['json', 'msgpack']
 CELERY.conf.result_serializer = 'msgpack'
@@ -97,22 +95,6 @@ def beamsim_lambert_through_celery(
         lambert_map_density: float = 1e-3):
     return cuebeamlambert(elements_vectorized, k, lambert_radius,lambert_map_density)
 
-
-# ############################################
-# The wrapper for calling the beamsim remotely and returning the field only
-# this way matlab is completely relieved from dealing with python objects
-# ############################################
-def beamsim_lambert_remote(
-        elements_vectorized=None,
-        k: float = 1000.0,
-        lambert_radius: float = 100e-3,
-        lambert_map_density: float = 1e-3):
-    if cueBeamCore3Verbosity:
-        print("calling remote worker and waiting")
-    async_result = beamsim_lambert_through_celery.delay(elements_vectorized,k,lambert_map_density,lambert_radius)
-    while not(async_result.ready()):
-        time.sleep(0.01)  # check up to 100x per second
-    return async_result.result
 
 
 # same as previous, but this time, nx>1 is allowed

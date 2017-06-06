@@ -2,3 +2,4 @@ probe*
 probe*\**
 *.avi
 *.mat
+*/**/*.pyc

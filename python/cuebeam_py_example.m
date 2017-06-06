@@ -4,8 +4,8 @@
 % note: if the python source code is modified, it has to be explicitly re-loaded in Matlab
 % one has to do 'clear classes' in such case.
 % clear classes
-cueBeam=py.importlib.import_module('cueBeamCore3');
-py.importlib.reload(cueBeam);
+cueBeamPy=py.importlib.import_module('cueBeamCore3');
+py.importlib.reload(cueBeamPy);
 %% create an example scenario (world)
 frequency = 1e6; %Hz
 wave_velocity_in_medium = 1450; % m/s; water=1450, plastic = 2800, steel = 5600
@@ -59,7 +59,7 @@ end
 
 % call beamsim to do the work
 t1=now;
-field_py=cueBeam.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'nx',uint32(nx),'z0',z0,'y0',y0));
+field_py=cueBeamPy.beamsim_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'dy',dy,'dz',dz,'ny',uint32(ny),'nz',uint32(nz),'nx',uint32(nx),'z0',z0,'y0',y0));
 field=ndarray2mat2(field_py);
 t2=now;
 
@@ -114,7 +114,7 @@ PixelsAwayL=circshift(PixelsAbove3dB,[0 -2*sum(PixelsAbove3dB)]);
 PixelsAroundMain = PixelsAbove3dB+PixelsNearbyR+PixelsNearbyL+PixelsAwayR+PixelsAwayL;
 plot(z,PixelsAroundMain)
 BeamWidth=sum(PixelsAbove3dB)*dz;
-EnergyRatio=sum(10.^(y_dataline_abs(PixelsNearby)/20))/sum(10.^(y_dataline_abs(PixelsAbove3dB)/20));
+EnergyRatio=sum(10.^(y_dataline_abs(PixelsNearbyR)/20))/sum(10.^(y_dataline_abs(PixelsAbove3dB)/20));
 EnergyRatiodB=20*log10(EnergyRatio);
 
 % make sure it is a zero-one vector only
@@ -138,9 +138,16 @@ title(sprintf('beamwidth: %0.1f mm, SNR = %0.1f dB, worst sidelobe = %0.1f dB\n'
 % plot over the areas considered
 zLeft=z(find(PixelsAbove3dB,1,'first'));
 zRight=z(find(PixelsAbove3dB,1,'last'));
-hFillCore=fill([zLeft zLeft zRight zRight],[0 -30 -30 0],'g');
+hFillCore=fill([zLeft zLeft zRight zRight],[0 2 2 0],'g');
 hFillCore.FaceAlpha = 0.1;
 zLeftNearby=z(find(PixelsNearbyR,1,'first'));
 zRightNearby=z(find(PixelsNearbyR,1,'last'));
-hFillNearby=fill([zLeftNearby zLeftNearby zRightNearby zRightNearby],[0 -30 -30 0],'r');
+hFillNearby=fill([zLeftNearby zLeftNearby zRightNearby zRightNearby],[0 2 2 0],'r');
 hFillNearby.FaceAlpha = 0.1;
+
+%% try the new lambert module
+lambert_map_density = 5000;
+lambert_radius = 0.5;
+field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
+field_lambert=ndarray2mat2(field_lambert_py);
+imagesc(abs(field_lambert))
