@@ -132,7 +132,7 @@ probe.tx=tx;
 %% make lambert map image
 if simulation.doLambertSection % Note! it is known that the Lambert code is buggy now. Do not use for the 2017 exercise.
     % define image parameters
-    lambert_radius=single(beam.focal_distance);
+    lambert_radius=single(simulation.lambert_radius);
     simulation.lambert_radius=lambert_radius;
     lambert_map_density=single(simulation.lambert_map_density);
     
