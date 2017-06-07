@@ -2,9 +2,9 @@
 % This script demonstrates how to use the cueBEAM.
 % Copyright Jerzy Dziewierz, University of Strathclyde, 2008-2013
 
-% set up enviroment parameters. All units in SI
+% set up environment parameters. All units in SI
 %probe.frequency=5e6;
-%enviroment.wave_velocity=5600; % steel
+%environment.wave_velocity=5600; % steel
 figureOffset=74; % this is to avoid collisions with other software
 
 % prepare output dir
@@ -25,9 +25,9 @@ try
 catch E % silent fallover
 end
 
-enviroment.wavelength=enviroment.wave_velocity/probe.frequency;
-enviroment.wavenumber=single(2*pi/enviroment.wavelength);
-enviroment.dx_simulation=enviroment.wavelength/7; % points per wavelength for discrete rayleigh integral
+environment.wavelength=environment.wave_velocity/probe.frequency;
+environment.wavenumber=single(2*pi/environment.wavelength);
+environment.dx_simulation=environment.wavelength/7; % points per wavelength for discrete rayleigh integral
 
 % set XYZ of focal point
 % beam.alpha_rotation=pi/12;
@@ -46,11 +46,11 @@ beam.focal_z=beam.focal_distance*cos(beam.alpha_rotation);
 probe.g=probe.d-probe.e; % distance between elements
 probe.A=probe.n*probe.d;
 
-probe.active_nearfield=probe.A.^2*probe.frequency/4/enviroment.wave_velocity;
-probe.passive_nearfield=probe.W.^2*probe.frequency/4/enviroment.wave_velocity;
-probe.active_elementsize_lambda=probe.e/enviroment.wavelength;
-probe.passive_elementsize_lambda=probe.W/enviroment.wavelength;
-probe.active_aperture_lambda=probe.A/enviroment.wavelength;
+probe.active_nearfield=probe.A.^2*probe.frequency/4/environment.wave_velocity;
+probe.passive_nearfield=probe.W.^2*probe.frequency/4/environment.wave_velocity;
+probe.active_elementsize_lambda=probe.e/environment.wavelength;
+probe.passive_elementsize_lambda=probe.W/environment.wavelength;
+probe.active_aperture_lambda=probe.A/environment.wavelength;
 
 if simulation.verbose
     fprintf('-------: calculated characteristics :-------\n');
@@ -74,7 +74,7 @@ probe.z=zeros(size(probe.x));
 % calculate delay laws to focus the probe at focal point
 for idx=1:probe.n
     probe.distanceToToFocalPoint(idx)=sqrt((beam.focal_x-probe.x(idx)).^2+(beam.focal_y-probe.y(idx)).^2+(beam.focal_z-probe.z(idx)).^2);
-    probe.ToF(idx)=probe.distanceToToFocalPoint(idx)/enviroment.wave_velocity;
+    probe.ToF(idx)=probe.distanceToToFocalPoint(idx)/environment.wave_velocity;
     if probe.apodisationtype==cueBeam.ApodisationType.None
         probe.apodisation(idx)=1;
     elseif probe.apodisationtype==cueBeam.ApodisationType.RaisedCosine
@@ -113,14 +113,14 @@ end
 tx=[]; % reset emitter points description
 for idx=1:probe.n
     % width direction
-    npts_x=ceil(probe.e/enviroment.dx_simulation);
+    npts_x=ceil(probe.e/environment.dx_simulation);
     qpx=linspace(probe.x(idx)-probe.e/2,probe.x(idx)+probe.e/2,npts_x); % x-coordinate points
-    npts_y=ceil(probe.W/enviroment.dx_simulation);
+    npts_y=ceil(probe.W/environment.dx_simulation);
     qpy=linspace(probe.y(idx)-probe.W/2,probe.y(idx)+probe.W/2,npts_y);
     [pxx pyy]=meshgrid(qpx,qpy); pxx=pxx(:); pyy=pyy(:);
     pzz=zeros(size(pyy));
     pzeros=zeros(size(pyy));
-    element_steering_phase=2*pi*probe.distanceToToFocalPoint(idx)/enviroment.wavelength;
+    element_steering_phase=2*pi*probe.distanceToToFocalPoint(idx)/environment.wavelength;
     pff=element_steering_phase+zeros(size(pxx));
     pfa=probe.apodisation(idx)+zeros(size(pxx));
     tx=[tx; pxx pyy pzz pzeros pfa pff];
@@ -142,7 +142,7 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
     % elements_vectorized format:   [x   y   z   amp    phase tmp]
     % additionally, the x and y are swapped
     %tic
-    %[img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
+    %[img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',environment.wavenumber,lambert_radius,lambert_map_density);
     %tbenchmark=toc;
     %elements_vectorized_redo=elements_vectorized;
     %elements_vectorized_redo=reshape(elements_vectorized_redo,6,size(elements_vectorized,2)/6)';
@@ -155,7 +155,7 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
     elements_vectorized_redo2=elements_vectorized_redo2(:);
     elements_vectorized_redo2=elements_vectorized_redo2';
     
-    field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',enviroment.wavenumber,'elements_vectorized',elements_vectorized_redo2,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
+    field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',environment.wavenumber,'elements_vectorized',elements_vectorized_redo2,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
     field_lambert=ndarray2mat2(field_lambert_py.cell{1});
     lambert_x=ndarray2mat2r(field_lambert_py.cell{2});
     lambert_y=ndarray2mat2r(field_lambert_py.cell{3});
@@ -207,7 +207,7 @@ if simulation.doXZBeamSection
     % perform beam simulation
     % !! Note: re-routing the call from cueBeam to cueBeamPy here:
     % %
-    % % img_xz=squeeze(cueBeam.cueBeam_xz(tx',enviroment.wavenumber,x0,y0,z0,nx,ny,nz,dx,dy,dz));
+    % % img_xz=squeeze(cueBeam.cueBeam_xz(tx',environment.wavenumber,x0,y0,z0,nx,ny,nz,dx,dy,dz));
     % % tbenchmark=toc;
     % attempt to load the same thing from python
     % Must adapt some of the parameters:
@@ -222,7 +222,7 @@ if simulation.doXZBeamSection
     pny=nx;
     pnz=nz;
     % note that the x/y dimensions are swapped in this call. This is intended.
-    field_xz_py=cueBeamPy.beamsim_remote(pyargs('k',enviroment.wavenumber,'elements_vectorized',elements_vectorized','dx',dy,'dy',dx,'dz',dz,'nx',uint32(pnx),'ny',uint32(pny),'nz',uint32(pnz),'x0',y0,'y0',x0,'z0',z0));
+    field_xz_py=cueBeamPy.beamsim_remote(pyargs('k',environment.wavenumber,'elements_vectorized',elements_vectorized','dx',dy,'dy',dx,'dz',dz,'nx',uint32(pnx),'ny',uint32(pny),'nz',uint32(pnz),'x0',y0,'y0',x0,'z0',z0));
     field_xz=abs(ndarray2mat2(field_xz_py));
     
     tbenchmark=toc;
@@ -338,7 +338,7 @@ if simulation.do3DBeam
             fprintf('\b\b\b\b\b%05d',length(ypoints)-idx_y);
         end
         yo_local=single(ypoints(idx_y));
-        img_xz=squeeze(cueBeam.cueBeam_xz(tx',enviroment.wavenumber,x0,yo_local,z0,nx,ny,nz,dx,dy,dz));
+        img_xz=squeeze(cueBeam.cueBeam_xz(tx',environment.wavenumber,x0,yo_local,z0,nx,ny,nz,dx,dy,dz));
         datacube(idx_y,:,:)=img_xz;
     end
     % convert to log scale

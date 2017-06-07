@@ -5,14 +5,11 @@
 % note, all units SI system
 
 % load cueBeamCore into matlab
-syspy=py.importlib.import_module('sys');
-syspy.path.append([pwd '//..//python']);
-
-cueBeamPy=py.importlib.import_module('cueBeamCore3');
-py.importlib.reload(cueBeamPy);
+import_cueBeamPy;
 
 % set up specimen
-enviroment.wave_velocity=5600; % m/s, steel
+environment.wave_velocity=5600; % m/s, steel
+
 
 % set up beam parameters
 beam.alpha_rotation=1*pi/24; % steer angle
@@ -69,7 +66,7 @@ cueBeam.process_linear_array;
 
 % save result
 result=[];
-result.enviroment=enviroment;
+result.enviroment=Environment;
 result.probe=probe;
 result.beam=beam;
 result.simulation=simulation;
