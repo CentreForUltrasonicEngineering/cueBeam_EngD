@@ -48,6 +48,12 @@ def disable_verbosity():
     cueBeamCore3Verbosity = False
 
 
+def output3values():
+    a = 3
+    b = 4
+    c = 5
+    return a, b, c
+
 # ############################################
 # The wrapper for calling the beamsim remotely and returning the field only
 # this way matlab is completely relieved from dealing with python objects
@@ -66,6 +72,23 @@ def beamsim_remote(k: float = 1000.0,
     if cueBeamCore3Verbosity:
         print("calling remote worker and waiting")
     async_result = beamsim_through_celery.delay(k, x0, y0, z0, nx, ny, nz, dx, dy, dz, elements_vectorized)
+    while not(async_result.ready()):
+        time.sleep(0.01)  # check up to 100x per second
+    return async_result.result
+
+
+# ############################################
+# The wrapper for calling the beamsim remotely and returning the field only
+# this way matlab is completely relieved from dealing with python objects
+# ############################################
+def beamsim_lambert_remote(
+        elements_vectorized=None,
+        k: float = 1000.0,
+        lambert_radius: float = 100e-3,
+        lambert_map_density: float = 1e-3):
+    if cueBeamCore3Verbosity:
+        print("calling remote worker and waiting")
+    async_result = beamsim_lambert_through_celery.delay(elements_vectorized,k,lambert_radius,lambert_map_density)
     while not(async_result.ready()):
         time.sleep(0.01)  # check up to 100x per second
     return async_result.result
@@ -98,21 +121,7 @@ def beamsim_lambert_through_celery(
     return cuebeamlambert(elements_vectorized, k, lambert_radius,lambert_map_density)
 
 
-# ############################################
-# The wrapper for calling the beamsim remotely and returning the field only
-# this way matlab is completely relieved from dealing with python objects
-# ############################################
-def beamsim_lambert_remote(
-        elements_vectorized=None,
-        k: float = 1000.0,
-        lambert_radius: float = 100e-3,
-        lambert_map_density: float = 1e-3):
-    if cueBeamCore3Verbosity:
-        print("calling remote worker and waiting")
-    async_result = beamsim_lambert_through_celery.delay(elements_vectorized,k,lambert_map_density,lambert_radius)
-    while not(async_result.ready()):
-        time.sleep(0.01)  # check up to 100x per second
-    return async_result.result
+
 
 
 # same as previous, but this time, nx>1 is allowed
@@ -338,8 +347,8 @@ def cuebeamlambert(
     elements_vectorized=None,
     k: float = 1000.0,
     lambert_radius: float = 100e-3,
-    lambert_map_density: float = 1e-3):
-
+    lambert_map_density: float = 100):
+    # print("lambert_radius = {}, lambert_map_density={}".format(lambert_radius,lambert_map_density))
     # matlab:: [img_lambert lambert_x lambert_y lambert_z] = cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
     if elements_vectorized is None:
         elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
@@ -396,7 +405,9 @@ def cuebeamlambert(
     offset=ix+n*iy;
     if (rho2>(float)2)
     {
-        out[offset]=0;
+        out[2*offset]=0;
+        out[2*offset+1]=0; // note, complex valued output
+        
         xp[offset]=0;
         yp[offset]=0;
         zp[offset]=0;
@@ -438,21 +449,21 @@ def cuebeamlambert(
     // pressure=sqrtf(pressure_re*pressure_re+pressure_im*pressure_im);
     // in CUDA, i need to calculate rx array memory offset manually for each thread:
     //offset=ix+nx*iy+(ny*nx)*iz;    
-    // out[offset]=(float)pressure; //left for debug
-    offset=2*ix+n*iy;  
-    out[offset]=(float)pressure_re;
+    // out[offset]=(float)pressure; //left for debug    
+    // offset=2*(ix+n*iy);  // note, complex-valued version A 
+    out[2*offset+0]=(float)pressure_re; // use real-to-complex offset conversion
     offset++; // go to the imaginary value pointer
-    out[offset]=(float)pressure_im;
-
+    out[2*offset+1]=(float)pressure_im;
 }
 
     """)
     # instantiate the code into the compiler
     beamsim_lambert_kernel = code_text_lambert.get_function("BeamsimLambertKernel")
-
-    n = math.ceil(6.283185307179586 * lambert_radius / lambert_map_density)
-    d = 2.0 * math.sqrt(2/n)
+    print("lambert_radius={}, lambert_map_density={}".format(lambert_radius,lambert_map_density))
+    npts = float(math.ceil(6.283185307179586 * lambert_radius / lambert_map_density))
+    d = 2.0 * math.sqrt(2)/npts
     n = 1 + math.ceil(2*math.sqrt(2)/d)
+    print("npts={}, d={}, n={}".format(npts,d,n))
     # d = 2 * sqrtf((float)    2) / npts; # distance between pixels in lambert map
     # n = 1 + (unsigned int)ceilf(2 * sqrtf(2) / d); // for some reason this fails to match with pure-C version if i don't add 1 here
 
@@ -484,8 +495,8 @@ def cuebeamlambert(
     threads_x = 16
     threads_y = 64
     threads_z = 1
-    blocks_x = int((int(cn) / threads_y) + 1)
-    blocks_y = int((int(cn) / threads_z) + 1)
+    blocks_x = int((int(cn) / threads_x) + 1)
+    blocks_y = int((int(cn) / threads_y) + 1)
     blocks_z = 1
 
     # start the timer!
@@ -508,7 +519,7 @@ def cuebeamlambert(
     # release the context, otherwise memory leak might occur
     gpu_context.pop()
     gpu_context.detach()
-    return cuda_out
+    return cuda_out, cuda_out_xp, cuda_out_yp, cuda_out_zp
 
 def cueBeamDemo():
     world = cueBeamWorld.CueBeamWorld()

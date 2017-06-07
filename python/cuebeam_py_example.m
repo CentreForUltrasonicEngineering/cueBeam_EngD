@@ -146,8 +146,20 @@ hFillNearby=fill([zLeftNearby zLeftNearby zRightNearby zRightNearby],[0 2 2 0],'
 hFillNearby.FaceAlpha = 0.1;
 
 %% try the new lambert module
-lambert_map_density = 5000;
+lambert_map_density = 10e-3;
 lambert_radius = 0.5;
-field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
-field_lambert=ndarray2mat2(field_lambert_py);
-imagesc(abs(field_lambert))
+
+npts = ceil(6.283185307179586 * lambert_radius / lambert_map_density)
+d = 2.0 * sqrt(2)/npts
+n = 1 + ceil(2*sqrt(2)/d)
+elements_vectorized_redo=elements_vectorized;
+elements_vectorized_redo=reshape(elements_vectorized_redo,6,size(elements_vectorized,2)/6)';
+    % mex format:                   [pxx pyy pzz pzeros pfa pff]
+    % elements_vectorized format:   [x   y   z   amp    phase tmp]
+    % additionally, the x and y are swapped
+elements_vectorized_redo=elements_vectorized_redo(:,[3 1 2 6 4 5])';
+elements_vectorized_redo=elements_vectorized_redo(:)';
+field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',wavenumber,'elements_vectorized',elements_vectorized_redo,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
+field_lambert=ndarray2mat2(field_lambert_py.cell{1});
+figure(8); clf;
+imagesc(abs(field_lambert)); axis image

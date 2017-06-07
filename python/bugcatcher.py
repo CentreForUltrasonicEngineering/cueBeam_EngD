@@ -1,28 +1,28 @@
 # notify bugsnag that i am imported
 def install_and_import(package):
     import importlib
-    print('starting to import {}'.format(package))
+    # print('starting to import {}'.format(package))
     try:
-        print('importing')
-        importlib.import_module(package)
-        print('import succeeded');
+      #  print('importing')
+      importlib.import_module(package)
+      #  print('import succeeded');
     except ImportError:
-        print('in ImportError');
+      #  print('in ImportError');
         # import pip
         # print('trying to install the package')
         # pip.main(['install', package])
         import os
         os.system('pip install bugsnag')
-        print('')
-        print('apparently installed')
+       # print('')
+       # print('apparently installed')
     finally:
-        print('refreshing site')
+        # print('refreshing site')
         import site
         importlib.import_module('site')
         importlib.reload(site)
-        print('importing...')
+        # print('importing...')
         globals()[package] = importlib.import_module(package)
-        print('done.')
+        # print('done.')
 
 
 install_and_import('bugsnag')

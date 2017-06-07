@@ -12,8 +12,8 @@ py.importlib.reload(cueBeamPy);
 enviroment.wave_velocity=5600; % m/s, steel
 
 % set up beam parameters
-beam.alpha_rotation=1*pi/12; % steer angle
-beam.focal_distance=25e-3; % mm
+beam.alpha_rotation=1*pi/24; % steer angle
+beam.focal_distance=50e-3; % mm
 beam.display_limit_db=-30; % for display purposes only
 
 % set up probe element locations.
@@ -22,7 +22,7 @@ probe.frequency=5e6; % Hz, all other
 probe.n=15; % number of elements
 probe.d=0.7e-3; % element pitch
 probe.e=probe.d-0.2e-3; % element width
-probe.W=15e-3; % passive aperture size
+probe.W=10e-3; % passive aperture size
 probe.apodisationtype=cueBeam.ApodisationType.None;
 probe.apodisationParameter1=0.5; % used with cueBeamApodisation.RaisedCosine as base level
 probe.apodisationParameter2=0.5; % used with cueBeamApodisation.RaisedCosine as raise power
@@ -49,7 +49,7 @@ simulation.do3DBeam=false; % export 3D beam shape to Voreen format. Note that du
 simulation.doXZBeamSection=true;
 simulation.XZBeamSection_Z=beam.focal_distance;
 
-simulation.doLambertSection=false; % !! NOTE! The networked-lambert code is known to be buggy at the moment. Do not use for the 2017 exercise.
+simulation.doLambertSection=true; % !! NOTE! The networked-lambert code is known to be buggy at the moment. Do not use for the 2017 exercise.
                                     % the local-cuda lambert code does work OK, but I will not support it anymore - draw Your own conclusions.
 
 % !!!NOTE: Thec "spot size" or "resolution" depends on how one defines it!

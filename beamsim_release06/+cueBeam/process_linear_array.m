@@ -136,19 +136,41 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
     simulation.lambert_radius=lambert_radius;
     lambert_map_density=single(simulation.lambert_map_density);
     
+    % re-route the call to lambert code
     
-    tic
-    [img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
-    tbenchmark=toc;
-    % uncomment for benchmark:
+    % mex format:                   [pxx pyy pzz pzeros pfa pff]
+    % elements_vectorized format:   [x   y   z   amp    phase tmp]
+    % additionally, the x and y are swapped
+    %tic
+    %[img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
+    %tbenchmark=toc;
+    %elements_vectorized_redo=elements_vectorized;
+    %elements_vectorized_redo=reshape(elements_vectorized_redo,6,size(elements_vectorized,2)/6)';
+    
+    npts=single(ceil(2*pi*lambert_radius / lambert_map_density));    
+    d=2.0*sqrt(2)/npts;    
+    n=1+ceil(sqrt(2)/d);
+    
+    elements_vectorized_redo2=tx';
+    elements_vectorized_redo2=elements_vectorized_redo2(:);
+    elements_vectorized_redo2=elements_vectorized_redo2';
+    
+    field_lambert_py=cueBeamPy.beamsim_lambert_remote(pyargs('k',enviroment.wavenumber,'elements_vectorized',elements_vectorized_redo2,'lambert_radius',lambert_radius,'lambert_map_density',lambert_map_density));
+    field_lambert=ndarray2mat2(field_lambert_py.cell{1});
+    lambert_x=ndarray2mat2r(field_lambert_py.cell{2});
+    lambert_y=ndarray2mat2r(field_lambert_py.cell{3});
+    lambert_z=ndarray2mat2r(field_lambert_py.cell{4});
+    % route the data back
+    img_lambert=abs(field_lambert);
+    % uncomment  for benchmark:
     % raycount=numel(img_lambert)*size(tx,1); rayspeed=raycount/tout; fprintf('%0.1f Mrays/s\n',rayspeed/1e6);
     % convert image to decibel scale
-    img_db=20*log10(img_lambert./max(img_lambert(:)));
-    beam.img_lambert=img_db;
+    img_db_lambert=20*log10(img_lambert./max(img_lambert(:)));
+    beam.img_lambert=img_db_lambert;
     beam.img_lambert_x=lambert_x;
     beam.img_lambert_y=lambert_y;
     beam.img_lambert_z=lambert_z;
-    lambert_coords=linspace(-90,90,size(img_db,1));
+    lambert_coords=linspace(-90,90,size(img_db_lambert,1));
     beam.img_lambert_coords=lambert_coords;
     
     % display lambert map image
@@ -157,7 +179,7 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
         figure(figureOffset+1); clf;
         set(gcf,'Name','Lambert map, dB range','NumberTitle','off');
         clf;
-        imagesc(lambert_coords,lambert_coords,img_db,[beam.display_limit_db 0]); colorbar; axis image;
+        imagesc(lambert_coords,lambert_coords,img_db_lambert,[beam.display_limit_db 0]); colorbar; axis image;
         title(sprintf('Lambert map : dB range\npixel edge length: %0.2f mm',1e3*lambert_map_density));
         xlabel('angle[deg]'); ylabel('angle[deg]');
         if simulation.doprints
@@ -268,7 +290,7 @@ if simulation.do3Dplot1
         [xpp zpp]=meshgrid(xpoints,zpoints); xpp=xpp(:); zpp=zpp(:); ypp=zeros(size(xpp));
         tri=delaunay(double(xpp),double(zpp));
         cpp=img_xz_db'; cpp=cpp(:);
-        cpp_alpha=cpp; cpp_alpha(cpp>-20)=1; cpp_alpha(cpp<=-20)=0.1;
+        cpp_alpha=cpp; cpp_alpha(cpp>beam.display_limit_db)=1; cpp_alpha(cpp<=beam.display_limit_db)=0.1;
         cpp_alpha(1)=0;
         hs=trisurf(tri,xpp,ypp,zpp,cpp);
         set(hs,'LineStyle','none');
@@ -280,14 +302,17 @@ if simulation.do3Dplot1
     end % the XZ section
     
     if simulation.doLambertSection
-        img_db_alpha=zeros(size(img_db));
-        img_db_alpha(img_db>beam.display_limit_db)=1;
-        img_db_alpha(img_db<beam.display_limit_db)=0.03;
-        img_db_alpha(1,1)=0;
-        hl=surf(lambert_x,lambert_y,lambert_z,double(img_db));
+        img_db_lambert_alpha=zeros(size(img_db_lambert));
+        img_db_lambert_alpha(img_db_lambert>beam.display_limit_db)=1;
+        img_db_lambert_alpha(img_db_lambert<=beam.display_limit_db)=0.03;
+        img_db_lambert_alpha(1,1)=0;
+        hl=surf(lambert_x,lambert_y,lambert_z,double(img_db_lambert));
         set(hl,'LineStyle','none');
-        set(hl,'AlphaData',img_db_alpha)
-        set(hl,'FaceAlpha','interp')
+        set(hl,'AlphaData',img_db_lambert_alpha)
+        set(hl,'FaceColor','interp');
+        set(hl,'FaceAlpha','interp');
+        
+        
         set(hl,'AlphaDataMapping','scaled')
     end % doLambertSection
     caxis([beam.display_limit_db 0])
