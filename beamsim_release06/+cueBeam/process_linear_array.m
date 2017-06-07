@@ -72,6 +72,8 @@ probe.y=zeros(size(probe.x));
 probe.z=zeros(size(probe.x));
 
 % calculate delay laws to focus the probe at focal point
+hammingwindow = hamming(probe.n) ;
+flattopwindow = flattopwin(probe.n);
 for idx=1:probe.n
     probe.distanceToToFocalPoint(idx)=sqrt((beam.focal_x-probe.x(idx)).^2+(beam.focal_y-probe.y(idx)).^2+(beam.focal_z-probe.z(idx)).^2);
     probe.ToF(idx)=probe.distanceToToFocalPoint(idx)/environment.wave_velocity;
@@ -79,7 +81,11 @@ for idx=1:probe.n
         probe.apodisation(idx)=1;
     elseif probe.apodisationtype==cueBeam.ApodisationType.RaisedCosine
         probe.apodisation(idx)=probe.apodisationParameter1+(1-probe.apodisationParameter1)*sin((idx-1)/(probe.n-1)*pi).^probe.apodisationParameter2;
-    else
+    elseif probe.apodisationtype==cueBeam.ApodisationType.Hamming
+        probe.apodisation(idx)=hammingwindow(idx);
+    elseif probe.apodisationtype==cueBeam.ApodisationType.Flattop
+         probe.apodisation(idx)=flattopwindow(idx);
+    else        
         error('unimplemented apodisation type');
     end
 end
@@ -101,6 +107,7 @@ if simulation.doplots
         fout=fopen(sprintf('%s\\%s_pzflex_delays.in',simulation.prefix,simulation.prefix),'w+');
         for idx=1:probe.n
             fprintf(fout,'symb tshift%d = %e\n',idx,  probe.ToF(idx));
+            fprintf(fout,'symb eweight%d = %e\n',idx, probe.apodisation(idx));
         end
         fclose(fout);
     catch E
@@ -150,8 +157,8 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
     npts=single(ceil(2*pi*lambert_radius / lambert_map_density));    
     d=2.0*sqrt(2)/npts;    
     n=1+ceil(sqrt(2)/d);
-    
-    elements_vectorized_redo2=tx';
+    tx2=tx; tx2=tx(:,[2 1 3 4 5 6]);
+    elements_vectorized_redo2=tx2';
     elements_vectorized_redo2=elements_vectorized_redo2(:);
     elements_vectorized_redo2=elements_vectorized_redo2';
     

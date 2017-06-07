@@ -19,13 +19,13 @@ beam.display_limit_db = -30; % for display purposes only
 % set up probe element locations.
 probe = []; % reset probe description
 probe.frequency = 5e6; % Hz, all other 
-probe.n = 15; % number of elements
+probe.n = 16; % number of elements
 probe.d = 0.7e-3; % element pitch
 probe.e = probe.d-0.2e-3; % element width
 probe.W = 10e-3; % passive aperture size
-probe.apodisationtype = cueBeam.ApodisationType.None;
+probe.apodisationtype = cueBeam.ApodisationType.None; % NOTE! press "tab" or see ApodisationType.m for available types.
 probe.apodisationParameter1 = 0.5; % used with cueBeamApodisation.RaisedCosine as base level
-probe.apodisationParameter2 = 0.5; % used with cueBeamApodisation.RaisedCosine as raise power
+probe.apodisationParameter2 = 0.7; % used with cueBeamApodisation.RaisedCosine as raise power
 
 % set simulation options
 simulation.lambert_map_density = 1e-3; % pixel size for lambert map
@@ -39,7 +39,7 @@ simulation.verbose = true; % display comments
 simulation.doplots = true; % display plots. If disabled, results are still stored in probe and beam data structures
 % enable to produce report grade figures
 simulation.doprints = false; % exports figures for report, requires  simulation.doplots=true, disable to make script go faster
-simulation.papersize = 15; % cm
+simulation.papersize = 16; % cm
 
 % note, might be slow on some computers
 simulation.do3Dplot1 = true; % create a 3D view
@@ -66,7 +66,7 @@ cueBeam.process_linear_array;
 
 % save result
 result=[];
-result.enviroment=Environment;
+result.enviroment=enviroment;
 result.probe=probe;
 result.beam=beam;
 result.simulation=simulation;
