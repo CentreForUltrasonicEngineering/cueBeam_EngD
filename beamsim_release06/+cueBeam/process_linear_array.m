@@ -418,7 +418,8 @@ end
 %%
 if simulation.doLambertSection
     [location_error idx_steer]=min(abs(0-beam.img_lambert_coords));
-    SteeringPlaneLine=beam.img_lambert(idx_steer,:);
+    %SteeringPlaneLine=beam.img_lambert(idx_steer,:); % note: original version
+    SteeringPlaneLine=beam.img_lambert(:,idx_steer); % note: python-routed version is rotated 90deg.
     % normalize line against itself
     SteeringPlaneLine=SteeringPlaneLine-max(SteeringPlaneLine);
     [Xintersect Yintersect]=cueBeam.curveintersect([-90 90],[-3 -3],beam.img_lambert_coords,SteeringPlaneLine);
