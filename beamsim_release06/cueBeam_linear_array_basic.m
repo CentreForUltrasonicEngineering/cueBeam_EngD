@@ -12,8 +12,8 @@ environment.wave_velocity = 5600; % m/s, steel
 
 
 % set up beam parameters
-beam.alpha_rotation = 1*pi/24; % steer angle
-beam.focal_distance = 50e-3; % mm
+beam.alpha_rotation = 0*pi/24; % steer angle
+beam.focal_distance = 60e-3; % mm
 beam.display_limit_db = -30; % for display purposes only
 
 % set up probe element locations.
@@ -31,7 +31,7 @@ probe.apodisationParameter2 = 0.7; % used with cueBeamApodisation.RaisedCosine a
 simulation.lambert_map_density = 1e-3; % pixel size for lambert map
 simulation.xy_resolution = 0.5e-3; % pixel size for XZ plot
 simulation.xy_z_extent = 100e-3; % size of the computation field
-simulation.xy_z0 = 15e-3;% note: do not start z0 from zero, 
+simulation.xy_z0 = 3e-3;% note: do not start z0 from zero, 
 % because the decibel range plots will be overwhelmed by amplitude of the sound close to the elements.
 simulation.xy_x_extent = 50e-3; % x-extent of the computation field
 
@@ -66,7 +66,7 @@ cueBeam.process_linear_array;
 
 % save result
 result=[];
-result.enviroment=enviroment;
+result.environment=environment;
 result.probe=probe;
 result.beam=beam;
 result.simulation=simulation;

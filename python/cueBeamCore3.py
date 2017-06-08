@@ -302,12 +302,12 @@ __global__ void BeamSimKernel ( const float *tx, unsigned int tx_length,
     ctx_count = numpy.int32(len(ctx) / 6)
     # note: must reserve the output memory right here
     # note: for 2D values, the x must be == 1
-    assert(nx == 1)
+    assert(nx == 1), 'this version supports nx=1 only'
     # prevent from the image size being too large
-    assert(ny < 4096+1)
-    assert(nz < 4096+1)
+    assert(ny < 4096+1), ' ny too large: reduce calculated field pixel count'
+    assert(nz < 4096+1), ' nz too large: reduce calculated field pixel count'
     # prevent from the transducer description to be too large - you can remove this limitation later on
-    assert(ctx_count < 8192+1)
+    assert(ctx_count < 81920+1),'too many radiator points. Reduce simulation complexity'
     cuda_out = numpy.zeros((int(cny), int(cnz))).astype(numpy.complex64)
 
     # prepare the GPU call : thread wave shape:
@@ -488,7 +488,7 @@ def cuebeamlambert(
     # note: for 2D values, the x must be == 1
 
     # prevent from the transducer description to be too large - you can remove this limitation later on
-    assert (ctx_count < 81920 + 1)
+    assert (ctx_count < 281920 + 1), "transducer definition too large"
 
 
     # prepare the GPU call : thread wave shape:
