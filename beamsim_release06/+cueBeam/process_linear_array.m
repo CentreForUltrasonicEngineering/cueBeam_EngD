@@ -1,10 +1,10 @@
 % cueBeam linear array
 % This script demonstrates how to use the cueBEAM.
 % Copyright Jerzy Dziewierz, University of Strathclyde, 2008-2013
+% Some routines moved to python, by Jerzy Dziewierz, University of Strathclyde 2017
 
-% set up environment parameters. All units in SI
-%probe.frequency=5e6;
-%environment.wave_velocity=5600; % steel
+
+
 figureOffset=74; % this is to avoid collisions with other software
 
 % prepare output dir
@@ -71,9 +71,10 @@ probe.x=linspace(-probe.A/2,probe.A/2,probe.n);
 probe.y=zeros(size(probe.x));
 probe.z=zeros(size(probe.x));
 
-% calculate delay laws to focus the probe at focal point
+% prepare windowing functions in case if they are needed
 hammingwindow = hamming(probe.n) ;
 flattopwindow = flattopwin(probe.n);
+% calculate delay laws to focus the probe at focal point
 for idx=1:probe.n
     probe.distanceToToFocalPoint(idx)=sqrt((beam.focal_x-probe.x(idx)).^2+(beam.focal_y-probe.y(idx)).^2+(beam.focal_z-probe.z(idx)).^2);
     probe.ToF(idx)=probe.distanceToToFocalPoint(idx)/environment.wave_velocity;
@@ -89,6 +90,7 @@ for idx=1:probe.n
         error('unimplemented apodisation type');
     end
 end
+
 % correct delay laws to be negative only
 probe_max_ToF=max([probe.ToF]);
 probe.ToF=probe.ToF-probe_max_ToF;
@@ -102,6 +104,7 @@ if simulation.doplots
         %print('-dpng',simulation.printresolution,sprintf('%s\\%sdelays.png',simulation.prefix,simulation.prefix));
         cueBeam.myaa(simulation,sprintf('%s\\%sdelays.png',simulation.prefix,simulation.prefix));
     end
+    
     % export delays to PZFlex format
     try
         fout=fopen(sprintf('%s\\%s_pzflex_delays.in',simulation.prefix,simulation.prefix),'w+');
@@ -115,24 +118,30 @@ if simulation.doplots
     end
 end
 
-% to simulate element directivity, use multiple points for each probe
-% element
+% to simulate element directivity, use multiple points for each probe element
+% note: uses environment.dx_simulation to create many points per wavelength
+
 tx=[]; % reset emitter points description
 for idx=1:probe.n
-    % width direction
+    % width direction - active aperture direction
     npts_x=ceil(probe.e/environment.dx_simulation);
     qpx=linspace(probe.x(idx)-probe.e/2,probe.x(idx)+probe.e/2,npts_x); % x-coordinate points
+    % passive aperture direction
     npts_y=ceil(probe.W/environment.dx_simulation);
     qpy=linspace(probe.y(idx)-probe.W/2,probe.y(idx)+probe.W/2,npts_y);
+    % make meshgrid and convert to a flat list
     [pxx pyy]=meshgrid(qpx,qpy); pxx=pxx(:); pyy=pyy(:);
     pzz=zeros(size(pyy));
     pzeros=zeros(size(pyy));
+    % calculate the delay law and apply to all points in the element
     element_steering_phase=2*pi*probe.distanceToToFocalPoint(idx)/environment.wavelength;
     pff=element_steering_phase+zeros(size(pxx));
+    % apply apodisation to each point in element
     pfa=probe.apodisation(idx)+zeros(size(pxx));
+    % store in a flat list
     tx=[tx; pxx pyy pzz pzeros pfa pff];
 end
-tx=single(tx);
+tx=single(tx); % convert to a GPU-compatible format
 % save
 probe.tx=tx;
 
