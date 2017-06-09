@@ -130,7 +130,7 @@ for idx=1:probe.n
     npts_y=ceil(probe.W/environment.dx_simulation);
     qpy=linspace(probe.y(idx)-probe.W/2,probe.y(idx)+probe.W/2,npts_y);
     % make meshgrid and convert to a flat list
-    [pxx pyy]=meshgrid(qpx,qpy); pxx=pxx(:); pyy=pyy(:);
+    [pxx, pyy]=meshgrid(qpx,qpy); pxx=pxx(:); pyy=pyy(:);
     pzz=zeros(size(pyy));
     pzeros=zeros(size(pyy));
     % calculate the delay law and apply to all points in the element
@@ -167,7 +167,7 @@ if simulation.doLambertSection
     npts=single(ceil(2*pi*lambert_radius / lambert_map_density));    
     d=2.0*sqrt(2)/npts;    
     n=1+ceil(sqrt(2)/d);
-    tx2=tx; tx2=tx(:,[1 2 3 4 5 6]); % convert data formats
+    tx2=tx(:,[1 2 3 4 5 6]); % convert data formats. Yeah, i know it's a mess. That's what you get with legacy code.
     elements_vectorized_redo2=tx2';
     elements_vectorized_redo2=elements_vectorized_redo2(:);
     elements_vectorized_redo2=elements_vectorized_redo2';
@@ -278,7 +278,7 @@ if simulation.doXZBeamSection
         figure(figureOffset+9); clf;
         set(gcf,'Name','XZ cross-section contour','NumberTitle','off');
         contours=[-20 -6 -3];
-        [C h]=contour(zpoints,xpoints,img_xz_db,contours);
+        [C, h]=contour(zpoints,xpoints,img_xz_db,contours);
         set(h,'ShowText','on','TextStep',get(h,'LevelStep')*2)
         set(h,'LineWidth',2);
         title('XZ cross-section, contour: dB range');
@@ -304,7 +304,7 @@ if simulation.do3Dplot1
     plot3(tx(:,1),tx(:,2),tx(:,3),'r.'); hold on;
     if simulation.doXZBeamSection
         % create xz mesh
-        [xpp zpp]=meshgrid(xpoints,zpoints); xpp=xpp(:); zpp=zpp(:); ypp=zeros(size(xpp));
+        [xpp, zpp]=meshgrid(xpoints,zpoints); xpp=xpp(:); zpp=zpp(:); ypp=zeros(size(xpp));
         tri=delaunay(double(xpp),double(zpp));
         cpp=img_xz_db'; cpp=cpp(:);
         cpp_alpha=cpp; cpp_alpha(cpp>beam.display_limit_db)=1; cpp_alpha(cpp<=beam.display_limit_db)=0.1;
@@ -374,11 +374,11 @@ end
 
 %% beam section on XZ plot
 if simulation.doXZBeamSection
-    [location_error idx_z]=min(abs(simulation.XZBeamSection_Z-zpoints)); % find closest line that HAS been calculated
+    [location_error, idx_z]=min(abs(simulation.XZBeamSection_Z-zpoints)); % find closest line that HAS been calculated
     XLine=beam.beam_img_xz(:,idx_z);
     % normalize line against itself
     XLine=XLine-max(XLine);
-    [Xintersect Yintersect]=cueBeam.curveintersect([min(xpoints) max(xpoints)],[-3 -3],xpoints,XLine);
+    [Xintersect, Yintersect]=cueBeam.curveintersect([min(xpoints) max(xpoints)],[-3 -3],xpoints,XLine);
     
     
     
@@ -388,8 +388,8 @@ if simulation.doXZBeamSection
         beam.beamwidth_XZ=beamwidth;
         
         % get mean amplitude of everything EXCEPT the main lobe
-        [location_error idx_1]=min(abs(Xintersect(1)-xpoints));
-        [location_error idx_2]=min(abs(Xintersect(2)-xpoints));
+        [location_error, idx_1]=min(abs(Xintersect(1)-xpoints)); %#ok<ASGLU>
+        [location_error, idx_2]=min(abs(Xintersect(2)-xpoints));
         XLine_cut=10.^(XLine/20);
         XLine_cut(idx_1:idx_2)=[];
         IntegratedSidelobeXLine=20*log10(mean(XLine_cut));
@@ -427,20 +427,20 @@ if simulation.doXZBeamSection
 end
 %%
 if simulation.doLambertSection
-    [location_error idx_steer]=min(abs(0-beam.img_lambert_coords));
+    [location_error, idx_steer]=min(abs(0-beam.img_lambert_coords));
     %SteeringPlaneLine=beam.img_lambert(idx_steer,:); % note: original version
     SteeringPlaneLine=beam.img_lambert(:,idx_steer); % note: python-routed version is rotated 90deg.
     % normalize line against itself
     SteeringPlaneLine=SteeringPlaneLine-max(SteeringPlaneLine);
-    [Xintersect Yintersect]=cueBeam.curveintersect([-90 90],[-3 -3],beam.img_lambert_coords,SteeringPlaneLine);
+    [Xintersect, Yintersect]=cueBeam.curveintersect([-90 90],[-3 -3],beam.img_lambert_coords,SteeringPlaneLine);
     if length(Xintersect)==2
         beamwidth=Xintersect(2)-Xintersect(1);
         str=sprintf('-3dB beam width (angular): %0.1f degrees',beamwidth);
         beam.beamwidth_lambert=beamwidth;
         
         % get mean amplitude of everything EXCEPT the main lobe
-        [location_error idx_1]=min(abs(Xintersect(1)-beam.img_lambert_coords));
-        [location_error idx_2]=min(abs(Xintersect(2)-beam.img_lambert_coords));
+        [location_error, idx_1]=min(abs(Xintersect(1)-beam.img_lambert_coords)); %#ok<ASGLU>
+        [location_error, idx_2]=min(abs(Xintersect(2)-beam.img_lambert_coords));
         SteeringPlaneLine_cut=10.^(SteeringPlaneLine/20);
         SteeringPlaneLine_cut(idx_1:idx_2)=[];
         IntegratedSidelobe=20*log10(mean(SteeringPlaneLine_cut));
