@@ -358,22 +358,26 @@ def cuebeamlambert(
     # print("lambert_radius = {}, lambert_map_density={}".format(lambert_radius,lambert_map_density))
     # matlab:: [img_lambert lambert_x lambert_y lambert_z] = cueBeam.cueBeam_lambert(tx',enviroment.wavenumber,lambert_radius,lambert_map_density);
     t0 = time.time()
+
     if elements_vectorized is None:
         elements_vectorized = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
     # note, that on a remote worker, there is never a saying where this thread wakes up
     # therefore i must be extra carefull to always initialize all the resources needed
 
-    # initialize manually
     drv_init_time_before = time.time()-t0
+    # initialize manually
+
     drv.init()
+
     # local_device_count = drv.Device.count()
     # print('found {} GPUs'.format(local_device_count))
+
     # choose one of the GPUs at random
     gpu_to_take = random.choice(range(drv.Device.count()))
-    # take device 0 for now
     gpu_context = drv.Device(gpu_to_take).make_context()
     gpu_context.push()  # make the context active
+
     drv_init_time_after = time.time() - t0
 
     code_text_lambert=SourceModule("""
@@ -467,52 +471,39 @@ def cuebeamlambert(
 }
 
     """)
+
     # instantiate the code into the compiler
     beamsim_lambert_kernel = code_text_lambert.get_function("BeamsimLambertKernel")
     kernel_init_time = time.time() - t0
-    # print("lambert_radius={}, lambert_map_density={}".format(lambert_radius,lambert_map_density))
+
+    # calc basic space properties
     npts = float(math.ceil(6.283185307179586 * lambert_radius / lambert_map_density))
     d = 2.0 * math.sqrt(2)/npts
     n = 1 + math.ceil(2*math.sqrt(2)/d)
-    # print("npts={}, d={}, n={}".format(npts,d,n))
-    # d = 2 * sqrtf((float)    2) / npts; # distance between pixels in lambert map
-    # n = 1 + (unsigned int)ceilf(2 * sqrtf(2) / d); // for some reason this fails to match with pure-C version if i don't add 1 here
 
     # convert the values from pythonic to Cudific
     ctx = numpy.asarray(elements_vectorized).astype(numpy.float32)
     ctx_count = numpy.int32(len(ctx) / 6)
-    cuda_out = numpy.zeros((int(n), int(n))).astype(numpy.complex64)
     cn = numpy.int32(n)
     cd = numpy.float32(d)
-
-    # # ============= FRONTIER
-    # unsigned int n, float d, float r, float k, float * xp, float * yp, float * zp)
     cr = numpy.float32(lambert_radius)
     ck = numpy.float32(k)
-
-    cuda_out_xp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
-    cuda_out_yp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
-    cuda_out_zp = numpy.zeros((int(cn), int(cn))).astype(numpy.float32)
-
-
-    # note: must reserve the output memory right here
-    # note: for 2D values, the x must be == 1
+    cuda_out_xp = numpy.zeros((int(n), int(n))).astype(numpy.float32)
+    cuda_out_yp = numpy.zeros((int(n), int(n))).astype(numpy.float32)
+    cuda_out_zp = numpy.zeros((int(n), int(n))).astype(numpy.float32)
+    cuda_out = numpy.zeros((int(n), int(n))).astype(numpy.complex64) # note: must reserve the output memory right here
 
     # prevent from the transducer description to be too large - you can remove this limitation later on
-    assert (ctx_count < 281920 + 1), "transducer definition too large"
-
+    assert (ctx_count < 300001), "transducer definition too large"
 
     # prepare the GPU call : thread wave shape:
     threads_x = 16
     threads_y = 64
     threads_z = 1
-    blocks_x = int((int(cn) / threads_x) + 1)
-    blocks_y = int((int(cn) / threads_y) + 1)
+    blocks_x = int((int(n) / threads_x) + 1)
+    blocks_y = int((int(n) / threads_y) + 1)
     blocks_z = 1
 
-    # start the timer!
-    # time_1 = time.clock()
-# ( float *tx, unsigned int tx_length, float *out, unsigned int n, float d, float r, float k,float *xp, float *yp, float *zp)
     kernel_prepare_time = time.time() - t0
     beamsim_lambert_kernel(
         drv.In(ctx),
@@ -522,18 +513,29 @@ def cuebeamlambert(
         drv.Out(cuda_out_xp),
         drv.Out(cuda_out_yp),
         drv.Out(cuda_out_zp),
+        block=(threads_x, threads_y, threads_z),
+        grid=(blocks_x, blocks_y, blocks_z))
 
-        block=(threads_x, threads_y, threads_z), grid=(blocks_x, blocks_y, blocks_z))
     kernel_run_time=time.time() - t0
-    # time_2 = time.clock()
+
 
     # release the GPU from this thread
     # release the context, otherwise memory leak might occur
     gpu_context.pop()
     gpu_context.detach()
-    detach_time=time.time() - t0
-    print("lambert: start:{}, init:{}, afterinit:{}, kernelinit:{}, kernelrun:{}, detach:{}".format(drv_init_time_before,drv_init_time_after,kernel_init_time,kernel_prepare_time,kernel_run_time,detach_time))
+    detach_time = time.time() - t0
+
+    # calculate performance metrics. This is usefull for debugging the distributed computation system
+    dinittime = drv_init_time_after - drv_init_time_before
+    dkernel_init_time = kernel_init_time - drv_init_time_after
+    dkernel_prepare_time = kernel_prepare_time - kernel_init_time
+    dkernel_run_time = kernel_run_time - kernel_prepare_time
+    dkernel_detach_time = detach_time - kernel_run_time
+    print("lambert: init:{:06.4f}, kernel_init:{:06.4f}, kernel_prepare:{:06.4f}, kernel_run:{:06.4f}, detach:{:06.4f}".format(dinittime,dkernel_init_time,dkernel_prepare_time,dkernel_run_time,dkernel_detach_time))
+
+    # finally...
     return cuda_out, cuda_out_xp, cuda_out_yp, cuda_out_zp
+
 
 def cueBeamDemo():
     world = cueBeamWorld.CueBeamWorld()
