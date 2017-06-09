@@ -146,7 +146,8 @@ tx=single(tx); % convert to a GPU-compatible format
 probe.tx=tx;
 
 %% make lambert map image
-if simulation.doLambertSection % Note! it is known that the Lambert code is buggy now. Do not use for the 2017 exercise.
+if simulation.doLambertSection 
+    
     % define image parameters
     lambert_radius=single(simulation.lambert_radius);
     simulation.lambert_radius=lambert_radius;
@@ -166,7 +167,7 @@ if simulation.doLambertSection % Note! it is known that the Lambert code is bugg
     npts=single(ceil(2*pi*lambert_radius / lambert_map_density));    
     d=2.0*sqrt(2)/npts;    
     n=1+ceil(sqrt(2)/d);
-    tx2=tx; tx2=tx(:,[1 2 3 4 5 6]);
+    tx2=tx; tx2=tx(:,[1 2 3 4 5 6]); % convert data formats
     elements_vectorized_redo2=tx2';
     elements_vectorized_redo2=elements_vectorized_redo2(:);
     elements_vectorized_redo2=elements_vectorized_redo2';
