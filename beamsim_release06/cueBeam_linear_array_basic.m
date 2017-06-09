@@ -12,7 +12,7 @@ environment.wave_velocity = 5600; % m/s, steel
 
 
 % set up beam parameters
-beam.alpha_rotation = 0*pi/24; % steer angle
+beam.alpha_rotation = 1*pi/24; % steer angle
 beam.focal_distance = 60e-3; % mm
 beam.display_limit_db = -30; % for display purposes only
 
@@ -28,7 +28,7 @@ probe.apodisationParameter1 = 0.5; % used with cueBeamApodisation.RaisedCosine a
 probe.apodisationParameter2 = 0.7; % used with cueBeamApodisation.RaisedCosine as raise power
 
 % set simulation options
-simulation.lambert_map_density = 1e-3; % pixel size for lambert map
+simulation.lambert_map_density = 0.5e-3; % pixel size for lambert map
 simulation.xy_resolution = 0.5e-3; % pixel size for XZ plot
 simulation.xy_z_extent = 100e-3; % size of the computation field
 simulation.xy_z0 = 3e-3;% note: do not start z0 from zero, 
@@ -57,7 +57,7 @@ simulation.lambert_radius = beam.focal_distance;
 % access the XZ and Lambert images from beam.beam_img_xz and img_lambert
 
 simulation.prefix='probe1_'; % folder and file name for the saved files
-simulation.LineSmoothing=false; % to make plots nicer, doesn't work on all systems 
+simulation.LineSmoothing=false; % to make plots nicer. It won't work on some systems.
 
 % -----------------------------------
 % launch the simulation script
