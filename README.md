@@ -12,13 +12,12 @@ Propagation medium is described in terms of wavenumber k. Radiating sources are 
 
 
     for each pixel
-      	pressure=complex zero;
+      	__initialize:__ pressure=complex zero;
     	for each radiator
     		distance=distance(radiator,pixel);
     		phase_shift=wavenumber*distance+radiator_phaseshift;
     		amplitdue_decayed=radiator_amplitude/distance;
-    		pressure=pressure+...
-    			complex(amplitdue_decayed,phase_shift);
+    		__accumulate:__ pressure=pressure+complex(amplitdue_decayed,phase_shift);
     	end for each radiator
     	out(pixel)=abs(pressure);  % store absolute value
     end for each pixel
@@ -65,13 +64,13 @@ Note that all inputs must be of a class single. (default for Matlab is double, s
 
 ### Hemisphere sampling version
 
-For beamsim Lambert the calling convention is simpler:
+For beamsim_Lambert the calling convention is simpler:
 
 	[img_lambert lambert_x lambert_y lambert_z]=cueBeam.cueBeam_lambert(tx', k, r, density); 
 
-This program automatically generates a mesh of points that are distributed over a hemisphere with radius R, and distance between real points "density", in such way, that the true area covered by a given point is equal for all points. The points are then mapped to a rectangle. The transformation rules are (after http://mathworld.wolfram.com/LambertAzimuthalEqual-AreaProjection.html )
+This program automatically generates a mesh of points that are distributed over a hemisphere with radius R, and distance between real points "density", in such way, that the true area (and thus, energy flux) covered by a given sampling point is equal for all points. The points are then mapped(recorded on) to a flat rectangular grid, and stored as such in memory. The transformation rules are (after http://mathworld.wolfram.com/LambertAzimuthalEqual-AreaProjection.html ) . 
 
-R is the radius of the sphere, and density is an approximate linear distance between points on the sphere. The resulting resolution of the field image can be calculated by:
+R is the radius of the sphere, and 'density' is an approximate linear distance between points on the sphere. The resulting resolution of the field image can be calculated by:
 
     number_of_points=ceil(2*pi*r/density);
     d=2*sqrt(2)/number_of_points;
@@ -86,7 +85,15 @@ Inverse transformation rules are used to calculate standard parallel   and centr
 >Figure 2. Lambert azimuthal equiareal map field probing point distribution.
 
 
-When compared to regular orthogonal grid, the advantage of this approach is that true power of the sidelobes can be easily integrated and compared with the power of the main lobe. This reduces error of estimating the sidelobe level for classic beamforming, and therefore is more representative of the image contrast from the operator's point of view. 
+p.s. I know that actually, the thing that is named 'density' should be named "reciprocial of density" or "specific volume" or 'ApproximateDistanceBetweenPoints' - or something like this - in any case, the lower the number, the more pixels You get. But I needed a shorter name quickly. If you find a right single word for this term, let me know!
+
+### Why hemisphere?
+
+When compared to regular orthogonal grid, there are two important advantages of this approach:
+1. Due to each pixel covering the same area, and thus, flux, the true power of the sidelobes can be easily integrated and compared with the power of the main lobe. This reduces error of estimating the sidelobe level for classic beamforming, and therefore is more representative of the image contrast from the operator's point of view. 
+2. The points on a hemisphere are __aproximately__ equidistant from the probe's centre, meaning that the time-of-flight from the probe to these points is nearly equal. This means, that the integrated side lobe amplitude is more representative of the actual image contrast that one would get in real life with time-domain signals. This is because the signals coming in **from the side lobe directions** and **at the same time** would colide and interfere with the reflectors insonified by the main beam --- and due to this spatial-temporal collision, are difficult to separate (and normally not separated in any classic algorithm like B-scan, TFM, e.t.c).
+
+To summarize, this fancy hemisphere sampling gives you results that are more representative of the final image quality (compared to regular 'rectangular region of a plane' sampling).
 
 ### Example
 
