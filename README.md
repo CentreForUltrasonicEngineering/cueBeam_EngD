@@ -13,7 +13,7 @@
 
 As of 2018, we really do not know what reality REALLY is - as far as we know, we might never know. But, we can make models. The usefullnes of the models is that they can help to explain the past and predict the future.
 
-Models range from simple, empirical closed-form equations like Newton's "Force=Mass*acceleration" , through to finite-element models (FEM) that require equation-solving with millions of unknowns. Accuracy, and therefore the usefulness of many of the models, are often compute bound. A more accurate solution can be produced at the cost of performing a greater number of computations. However, these computations bear a cost in terms of hardware, energy and, most importantly, time.  Hence, there still exists a market for building simplified models of reality; ones that capture just enough of the complexity of real phenomena, but at the same time, are computably affordable.
+Models range from simple, empirical closed-form equations like Newton's "Force=Mass*acceleration", through to finite-element models (FEM) that require equation-solving with millions of unknowns. Accuracy, and therefore the usefulness of many of the models, are often compute bound. A more accurate solution can be produced at the cost of performing a greater number of computations. However, these computations bear a cost in terms of hardware, energy and, most importantly, time.  Hence, there still exists a market for building simplified models of reality; ones that capture just enough of the complexity of real phenomena, but at the same time, are computably affordable.
 
 ## cueBeam model of the world
 
@@ -59,14 +59,14 @@ Propagation medium is described in terms of wavenumber k. Radiating sources are 
 
 ~~~~
 	For each pixel 
-		Initialize pressure=complex zero;
+		Initialize new pressure_accumulator=complex_zero;
 		For each radiator
-			Distance=distance(radiator,pixel);
-			Phase shift= wavenumber*distance+radiator phaseshift;
-			Amplitude decayed=radiatoramplitude/distance;
-			pressure=pressurecomplex(amplitudedecayed, phase shift);
-        End for each radiator
-        Output(pixel)=pressure;  
+			Distance=distance_between(radiator,pixel);
+			Phase_shift= wavenumber*Distance+source_radiator_phaseshift;
+			Amplitude_decayed=source_radiator_amplitude/Distance;
+			pressure_accumulator=increment(pressure_accumulator, complex(Amplitude_decayed, Phase_shift))
+        	End for each radiator
+        	Output(pixel)=pressure_accumulator;  
 	End for each pixel
 ~~~~
 
@@ -90,7 +90,7 @@ The following inputs are required:
  These inputs should be packed into a n*6 matrix
 
     tx=[elemX elemY elemZ zeros() abs(SVect(:)) angle(SVect(:))];
-​    
+   
 
 ### Planar sampling version
 
@@ -105,7 +105,7 @@ The way to call the calculation function is:
 
 	img_xz = cueBeam_xz(tx',k,x0,y0,z0,nx,ny,nz,dx,dy,dz);
 
-Note that all inputs must be of a class single. (default for Matlab is double, so conversion is needed). This is both for speed and compatibility with early CUDA cards. No ill-conditioned math is involved, so single precision numbers deliver approximately 80dB of accuracy.
+Note that all inputs must be of a class single. (default for Matlab is double, so conversion is needed). This is both for speed and compatibility with early CUDA cards. No ill-conditioned math is involved, so single precision numbers deliver approximately 70-80dB of accuracy.
 
 ![space](cueBeam_XZ_space.png)
 
@@ -135,7 +135,7 @@ Inverse transformation rules are used to calculate standard parallel   and centr
 
 p.s. I know that actually, the thing that is named 'density' should be named "reciprocial of density" or "specific volume" or 'ApproximateDistanceBetweenPoints' - or something like this - in any case, the lower the number, the more pixels You get. But I needed a shorter name quickly. If you find a right single word for this term, let me know!
 
-### Why hemisphere?
+### Why hemisphere, and why this fancy sampling method?
 
 When compared to regular orthogonal grid, there are two important advantages of this approach:
 1. Due to each pixel covering the same area, and thus, flux, the true power of the sidelobes can be easily integrated and compared with the power of the main lobe. This reduces error of estimating the sidelobe level for classic beamforming, and therefore is more representative of the image contrast from the operator's point of view. 
