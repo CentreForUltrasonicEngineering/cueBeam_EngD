@@ -147,7 +147,7 @@ To summarize, this fancy hemisphere sampling gives you results that are more rep
 
 An example on how to define parameters for use with cueBeam are provided in the MATLAB file:
 
-cueBeam_linear_array_basic
+[cueBeam_linear_array_basic](https://github.com/CentreForUltrasonicEngineering/cueBeam_EngD/blob/master/beamsim_release06/cueBeam_linear_array_basic.m)
 
 
 ## Demos and applications
