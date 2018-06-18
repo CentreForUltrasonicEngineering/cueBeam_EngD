@@ -177,10 +177,10 @@ The user can click the XZ or hemisphere images to direct and focus the beam at t
 
 ### Gallery of simulation examples
 
-See [this document](cueBEAM-learning-resources/2017-06-06 Gallery of beam simulation examples.docx)
+See [this document](https://github.com/CentreForUltrasonicEngineering/cueBeam_EngD/blob/master/cueBEAM-learning-resources/2017-06-06%20Gallery%20of%20beam%20simulation%20examples.docx)
 
 ### exercise script for EngD ultrasonics course
-See [this document](cueBEAM-learning-resources/2017-06-6 Lab script v1.docx)
+See [this document](https://github.com/CentreForUltrasonicEngineering/cueBeam_EngD/blob/master/cueBEAM-learning-resources/2017-06-6%20Lab%20script%20v1.docx)
 
 ## where to get it
 
