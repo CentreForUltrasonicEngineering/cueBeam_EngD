@@ -3,7 +3,8 @@
 
 ------
 
-"The purpose of computer simulations is to reduce the total cost of doing the job, not to increase it" - Richard O'Leary, c.a. 2011
+"The purpose of computer simulations is to reduce the total cost of doing the job, not to increase it" 
+        - Richard O'Leary, c.a. 2011
 
 ----
 
